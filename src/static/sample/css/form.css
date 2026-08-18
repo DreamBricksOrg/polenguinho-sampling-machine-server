@@ -1,0 +1,198 @@
+.container {
+    width: 100%;
+    min-height: 100vh;
+    background-color: #122948;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 2rem;
+    flex: 1;
+}
+
+.header {
+    width: 100%;
+    height: 6rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.header img {
+    width: 95%;
+    object-fit: contain;
+}
+
+.header-foguete {
+    height: 2.5rem;
+    position: absolute;
+    top: -50px;
+    right: -30px;
+}
+
+.header-foguete img {
+    height: 100%;
+    object-fit: contain;
+}
+
+.header-raio {
+    height: 2.5rem;
+    position: absolute;
+    bottom: -20px;
+    left: -20px;
+}
+
+.header-raio img {
+    height: 100%;
+    object-fit: contain;
+}
+
+.title {
+    font-family: 'Norpeth-Black';
+    color: #fff;
+    width: 100%;
+    position: relative;
+    margin-top: 4rem;
+}
+
+.title img{
+    width: 100%;
+    object-fit: contain;
+}
+
+
+
+form {
+    margin-top: 3rem;
+    width: 100%;
+    border-radius: 10px;
+    background-color: #E6E6E6;
+    padding: 1rem;
+}
+
+
+.form-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.form-label {
+    margin-bottom: 3px;
+    font-family: 'Norpeth-DemiBold';
+    color: #122948;
+    font-size: 1rem;
+}
+
+.form-label span {
+    color: #ff0000;
+}
+
+.form-input {
+    margin-bottom: 1rem;
+    padding: 8px;
+    width: 100%;
+    font-size: 1rem;
+    text-align: center;
+    font-family: 'Norpeth-Medium';
+    color: #122948;
+    border: 1px solid #122948;
+    border-radius: 5px;
+}
+
+.form-input.invalid {
+    border: 2px solid #ff0000;
+}
+
+.form-error {
+    color: #ff0000;
+    font-size: 0.7rem;
+    margin-top: -15px;
+    margin-bottom: 10px;
+    font-family: 'Norpeth';
+    font-weight: 500;
+    text-align: center;
+    width: 80%;
+}
+
+.label-termos {
+    font-family: 'Norpeth-Light';
+    color: #122948;
+    font-size: 0.8rem;
+}
+
+#termos-erro {
+    margin-top: 5px;
+    width: 100%;
+}
+
+.label-termos a {
+    color: inherit;
+    text-decoration: none;
+}
+
+#termos {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    width: 1.2rem;
+    height: 1.2rem;
+    min-width: 1.2rem;
+    border: none;
+    border-radius: 3px;
+    background: #CFCFCF;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+#termos:checked {
+    background: #122948;
+}
+
+#termos:checked::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 45%;
+    width: 0.3rem;
+    height: 0.6rem;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+
+
+.button-container {
+    margin-top: 1rem;
+    width: 80%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.button-container img {
+    width: 100%;
+    object-fit: contain;
+    cursor: pointer;
+}
+
+.footer {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 3rem;
+}
+
+.footer img {
+    width: 100%;
+    object-fit: contain;
+}

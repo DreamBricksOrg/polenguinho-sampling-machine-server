@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Descriptografar Dados — DrogaVET</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2214%22>🔐</text></svg>">
+  <style>
+    @font-face {
+      font-family: 'Norpeth-Light';
+      src: url('/templates/sample/assets/fonts/fonte/Norpeth Light_v2.otf') format('opentype');
+    }
+    @font-face {
+      font-family: 'Norpeth-Medium';
+      src: url('/templates/sample/assets/fonts/fonte/Norpeth Medium_v2.otf') format('opentype');
+    }
+    @font-face {
+      font-family: 'Norpeth-DemiBold';
+      src: url('/templates/sample/assets/fonts/fonte/The Northern Block Ltd - Norpeth DemiBold.otf') format('opentype');
+    }
+    @font-face {
+      font-family: 'Norpeth-Black';
+      src: url('/templates/sample/assets/fonts/fonte/Norpeth Black_v2.otf') format('opentype');
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background-color: #122948;
+      font-family: 'Norpeth-Medium', sans-serif;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      padding: 2.5rem 1.5rem;
+    }
+
+    .page { width: 100%; max-width: 620px; }
+
+    h1 {
+      font-family: 'Norpeth-Black', sans-serif;
+      text-align: center;
+      margin: 0 0 0.5rem;
+      font-size: 1.6rem;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-family: 'Norpeth-Light', sans-serif;
+      opacity: 0.85;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+    }
+
+    section {
+      background-color: #E6E6E6;
+      color: #122948;
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      font-family: 'Norpeth-DemiBold', sans-serif;
+      margin-top: 0;
+      font-size: 1.1rem;
+    }
+
+    p { font-family: 'Norpeth-Light', sans-serif; line-height: 1.4; }
+
+    strong { font-family: 'Norpeth-DemiBold', sans-serif; }
+
+    label {
+      display: block;
+      font-family: 'Norpeth-DemiBold', sans-serif;
+      margin-top: 0.75rem;
+      margin-bottom: 4px;
+    }
+
+    button {
+      font-family: 'Norpeth-DemiBold', sans-serif;
+      font-size: 0.95rem;
+      color: #ffffff;
+      background-color: #122948;
+      border: none;
+      border-radius: 5px;
+      padding: 0.65rem 1.4rem;
+      cursor: pointer;
+      margin-top: 0.75rem;
+      margin-right: 0.5rem;
+      transition: opacity 0.15s ease-in-out;
+    }
+    button:hover { opacity: 0.85; }
+    button.menu-button.active { background-color: #d4870f; }
+
+    .status {
+      margin-top: 0.6rem;
+      font-size: 0.85rem;
+      min-height: 1.2em;
+      font-family: 'Norpeth-DemiBold', sans-serif;
+    }
+    .status.error { color: #c0392b; }
+    .status.success { color: #1f7a3f; }
+
+    #encryptionStatus {
+      text-align: center;
+      font-family: 'Norpeth-DemiBold', sans-serif;
+      padding: 0.6rem;
+      border-radius: 5px;
+      background-color: #f5c66b;
+      color: #6b3e00;
+    }
+    #encryptionStatus.active { background-color: #bfe7c9; color: #1f7a3f; }
+
+    .tab { display: none; }
+    .tab.active { display: block; }
+
+    .drop-zone {
+      border: 2px dashed #122948;
+      border-radius: 8px;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background-color 0.15s ease-in-out;
+    }
+    .drop-zone.drag-over { background-color: rgba(18, 41, 72, 0.1); }
+    .drop-zone p { margin: 0; font-family: 'Norpeth-Light', sans-serif; }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 1.5rem;
+      color: #ffffff;
+      font-family: 'Norpeth-Light', sans-serif;
+      font-size: 0.85rem;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>descriptografar dados</h1>
+    <p class="subtitle">Configuração de criptografia dos cadastros — DrogaVET</p>
+
+    <p id="encryptionStatus">Consultando status da criptografia...</p>
+
+    <section>
+      <button id="btnMenuKeys" class="menu-button" type="button">gerar chaves</button>
+      <button id="btnMenuDecrypt" class="menu-button" type="button">descriptografar dados</button>
+    </section>
+
+    <section id="tabKeys" class="tab">
+      <h2>Gerar chaves</h2>
+      <p>
+        Gera um novo par de chaves RSA. A chave privada
+        (<strong>private_key.pem</strong>) deve ficar apenas com o time
+        responsável — guarde-a em local seguro, fora do servidor. A chave
+        pública (<strong>public_key.pem</strong>) deve ser enviada ao
+        desenvolvedor para ser publicada em
+        <strong>src/static/sample/js/crypt/public_key.pem</strong>. As duas
+        formam um par único — uma não funciona sem a outra.
+      </p>
+      <button id="btnGenerateKeys" type="button">Gerar e baixar chaves</button>
+      <p id="keysStatus" class="status"></p>
+    </section>
+
+    <section id="tabDecrypt" class="tab">
+      <h2>Descriptografar dados</h2>
+      <label>Chave privada</label>
+      <div id="privateKeyDropZone" class="drop-zone">
+        <p>Arraste o arquivo da chave privada aqui, ou clique para procurar no computador.</p>
+      </div>
+      <input id="privateKeyFile" type="file" accept=".pem,.txt" style="display: none" />
+      <p id="privateKeyStatus" class="status"></p>
+
+      <button id="btnDownloadDecryptedCsv" type="button">Baixar CSV descriptografado</button>
+      <p id="decryptStatus" class="status"></p>
+    </section>
+
+    <a class="back-link" href="/templates/admin/admin.html">&larr; voltar ao painel admin</a>
+  </div>
+
+  <script src="/templates/sample/js/crypt/util.js"></script>
+  <script src="/templates/sample/js/crypt/aes_encryption.js"></script>
+  <script src="/templates/sample/js/crypt/rsa_encryption.js"></script>
+  <script src="/templates/sample/js/crypt/db_encryption.js"></script>
+  <script src="/templates/admin/decrypt_page.js"></script>
+</body>
+</html>

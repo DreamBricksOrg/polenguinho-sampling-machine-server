@@ -1,0 +1,66 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+@font-face {
+    font-family: 'Norpeth-Light';
+    src: url('../assets/fonts/fonte/Norpeth Light_v2.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Norpeth-Book';
+    src: url('../assets/fonts/fonte/Norpeth Book_v2.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Norpeth-Medium';
+    src: url('../assets/fonts/fonte/Norpeth Medium_v2.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Norpeth-DemiBold';
+    src: url('../assets/fonts/fonte/The Northern Block Ltd - Norpeth DemiBold.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Norpeth-Bold';
+    src: url('../assets/fonts/fonte/Norpeth Bold_v2.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Norpeth-Black';
+    src: url('../assets/fonts/fonte/Norpeth Black_v2.otf') format('opentype');
+}
+
+
+html,
+body {
+    touch-action: pan-x pan-y;
+    overscroll-behavior: contain;
+}
+
+body {
+    -ms-touch-action: manipulation;
+    touch-action: manipulation;
+}
+
+@media (pointer: coarse) {
+
+    html,
+    body {
+        user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+        touch-action: manipulation;
+    }
+}
+
+.header {
+    width: 100%;
+    height: 140px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+}

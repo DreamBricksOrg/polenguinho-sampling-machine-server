@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample Machine - Termos</title>
+    <link rel="stylesheet" href="/templates/sample/css/sample-root.css">
+    <link rel="stylesheet" href="/templates/sample/css/terms.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="content">
+
+            <div class="terms-content">
+                <p>
+                    Ao participar desta ação promocional, você concorda com a coleta e uso dos seus dados pessoais
+                    para as finalidades descritas abaixo, em conformidade com a Lei Geral de Proteção de Dados (LGPD —
+                    Lei nº 13.709/2018).
+                </p>
+                <p>
+                    <strong>1. Finalidade da coleta:</strong> seus dados serão utilizados exclusivamente para
+                    identificação do participante, controle de distribuição de amostras e comunicação relacionada
+                    à ação promocional vigente.
+                </p>
+                <p>
+                    <strong>2. Responsabilidade:</strong> o responsável pelo tratamento dos dados é o organizador
+                    desta ação. Os dados não serão compartilhados com terceiros sem o seu consentimento, salvo
+                    obrigação legal.
+                </p>
+                <p>
+                    <strong>3. Seus direitos:</strong> você pode, a qualquer momento, solicitar acesso, correção,
+                    portabilidade ou exclusão dos seus dados, bem como revogar este consentimento, entrando em
+                    contato com o canal de atendimento disponibilizado pelo organizador.
+                </p>
+                <p>
+                    <strong>4. Política de Privacidade:</strong> acesse a política de privacidade completa pelo
+                    canal de atendimento ou site do organizador desta ação.
+                </p>
+                <p>
+                    <strong>5. Prazo de retenção:</strong> os dados serão mantidos pelo período necessário ao
+                    cumprimento das finalidades descritas ou conforme exigido por lei.
+                </p>
+            </div>
+
+            <label class="checkbox-container">
+                <input type="checkbox" id="accept-terms">
+                LI E ACEITO OS TERMOS E CONDIÇÕES
+            </label>
+
+            <p class="after-terms-text">
+                AO ACEITAR, SEUS DADOS SERÃO USADOS EXCLUSIVAMENTE PARA ESTA AÇÃO
+            </p>
+
+            <div class="button-container">
+                <button class="btn" id="continue-btn">CONTINUAR</button>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const termsContent = document.querySelector('.terms-content');
+            const checkbox = document.getElementById('accept-terms');
+            const btn = document.getElementById('continue-btn');
+
+            checkbox.disabled = true;
+            btn.disabled = true;
+            btn.style.opacity = 0.5;
+            checkbox.style.opacity = 0.5;
+
+            function unlockCheckbox() {
+                checkbox.disabled = false;
+                checkbox.style.opacity = 1;
+            }
+
+            termsContent.addEventListener('scroll', function () {
+                if (termsContent.scrollTop + termsContent.clientHeight >= termsContent.scrollHeight - 2) {
+                    unlockCheckbox();
+                }
+            });
+
+            if (termsContent.scrollHeight <= termsContent.clientHeight) {
+                unlockCheckbox();
+            }
+
+            checkbox.addEventListener('change', function () {
+                btn.disabled = !checkbox.checked;
+                btn.style.opacity = checkbox.checked ? 1 : 0.5;
+            });
+
+            function warnMustRead(e) {
+                if (checkbox.disabled) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    Swal.fire({
+                        title: 'Atenção!',
+                        text: 'É necessário ler todos os termos antes de aceitar.',
+                        icon: 'warning',
+                        confirmButtonText: 'Entendi',
+                        confirmButtonColor: '#000',
+                    });
+                }
+            }
+
+            checkbox.addEventListener('click', warnMustRead);
+            checkbox.addEventListener('touchstart', warnMustRead);
+
+            function warnMustAccept(e) {
+                if (btn.disabled) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    Swal.fire({
+                        title: 'Atenção!',
+                        text: 'É necessário aceitar os termos antes de continuar.',
+                        icon: 'warning',
+                        confirmButtonText: 'Entendi',
+                        confirmButtonColor: '#000',
+                    });
+                } else {
+                    proceed();
+                }
+            }
+
+            btn.addEventListener('click', warnMustAccept);
+            btn.addEventListener('touchstart', warnMustAccept);
+        });
+
+        function proceed() {
+            const queryString = new URLSearchParams(window.location.search).toString();
+            window.location.href = queryString
+                ? `/api/sample/form?${queryString}`
+                : '/api/sample/form';
+        }
+    </script>
+</body>
+
+</html>

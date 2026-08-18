@@ -1,0 +1,12 @@
+services:
+  machine:
+    build: .
+    image: sampling-machine-server
+    container_name: sampling-machine-server
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./src/static:/app/src/static
+    restart: unless-stopped

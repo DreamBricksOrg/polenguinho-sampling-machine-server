@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample Machine - Cadastro</title>
+    <link rel="stylesheet" href="/templates/sample/css/sample-root.css">
+    <link rel="stylesheet" href="/templates/sample/css/form.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    {% if encryption_enabled %}
+    <script src="/templates/sample/js/crypt/util.js"></script>
+    <script src="/templates/sample/js/crypt/aes_encryption.js"></script>
+    <script src="/templates/sample/js/crypt/rsa_encryption.js"></script>
+    <script src="/templates/sample/js/crypt/db_encryption.js"></script>
+    {% endif %}
+</head>
+
+<body>
+    <div class="container">
+        
+        <div class="header">
+            <img src="/templates/sample/assets/images/DROGAVET_ASSETS_LANDING/TELA_01/HEADER.png">
+        </div>
+
+        <div class="content">
+            <div class="title">
+                <div class="header-foguete">
+                    <img src="/templates/sample/assets/images/DROGAVET_ASSETS_LANDING/TELA_01/FOGUETE.png"
+                        alt="Foguete">
+                </div>
+
+                <img src="/templates/sample/assets/images/DROGAVET_ASSETS_LANDING/TELA_01/ATIVAR.png" alt="Título">
+
+                <div class="header-raio">
+                    <img src="/templates/sample/assets/images/DROGAVET_ASSETS_LANDING/TELA_01/RAIO.png" alt="Raio">
+                </div>
+            </div>
+
+
+            <form id="formulario">
+                <div class="form-content">
+                    <label for="nome" class="form-label">Nome completo<span>*</span></label>
+                    <input type="text" id="nome" name="nome" class="form-input" autocomplete="off" required>
+                    <div id="nome-erro" class="form-error" style="display:none;"></div>
+
+                    <label for="celular" class="form-label">Celular com <b>DDD</b><span>*</span></label>
+                    <input type="tel" id="celular" name="celular" class="form-input" autocomplete="off"
+                        placeholder="(99) 99999-9999" maxlength="15" required>
+                    <div id="celular-erro" class="form-error" style="display:none;"></div>
+
+                    <label for="email" class="form-label">E-mail<span>*</span></label>
+                    <input type="email" id="email" name="email" class="form-input" autocomplete="off" required>
+                    <div id="email-erro" class="form-error" style="display:none;"></div>
+                </div>
+                <input type="checkbox" name="termos" id="termos" required>
+                <label for="termos" class="form-label label-termos"><b><a
+                            href="/templates/sample/docs/Termo_Uso_Protecao_Dados_e_Anexo_Formulario_DrogaVET_Paulista_vf.pdf"
+                            target="_blank" rel="noopener">Aceito os termos e politica de uso dos meus dados</a></b>
+                    fornecidos acima para a DrogaVET, permitindo que sejam utilizados para envio de promoções e
+                    campanhas digitais personalizadas.</label>
+                <div id="termos-erro" class="form-error" style="display:none;"></div>
+            </form>
+
+            <div class="button-container">
+                <img src="/templates/sample/assets/images/DROGAVET_ASSETS_LANDING/TELA_01/BT_ENVIAR.png" alt="Enviar"
+                    id="btn-enviar" onclick="submitForm()">
+            </div>
+
+        </div>
+
+        <div class="footer">
+            <img src="/templates/sample/assets/images/DROGAVET_ASSETS_LANDING/TELA_01/FOOTER.png" alt="Footer">
+        </div>
+    </div>
+
+    <script>
+        const COLLECTION = 'registrations';
+        const ENCRYPTION_ENABLED = {{ 'true' if encryption_enabled else 'false' }};
+
+        function getUrlParameter(name) {
+            return new URLSearchParams(window.location.search).get(name);
+        }
+
+        function saveSessionData() {
+            const sessionId = getUrlParameter('sid');
+            const slug = getUrlParameter('slug');
+            if (sessionId) {
+                localStorage.setItem('session_id', sessionId);
+            }
+            if (slug) {
+                localStorage.setItem('slug', slug);
+            }
+        }
+
+        function validarEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function validarNome(nome) {
+            return nome.trim().length > 0 && nome.trim().split(' ').length >= 2;
+        }
+
+        function mascararCelular(valor) {
+            let digitos = valor.replace(/\D/g, '').slice(0, 11);
+            if (digitos.length > 10) {
+                return digitos.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim().replace(/-$/, '');
+            }
+            if (digitos.length > 5) {
+                return digitos.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').trim().replace(/-$/, '');
+            }
+            if (digitos.length > 2) {
+                return digitos.replace(/(\d{2})(\d{0,5})/, '($1) $2').trim();
+            }
+            if (digitos.length > 0) {
+                return digitos.replace(/(\d{0,2})/, '($1');
+            }
+            return digitos;
+        }
+
+        function validarCelular(celular) {
+            return /^\(\d{2}\) \d{4,5}-\d{4}$/.test(celular);
+        }
+
+        const nomeInput = document.getElementById('nome');
+        const celularInput = document.getElementById('celular');
+        const emailInput = document.getElementById('email');
+        const termosInput = document.getElementById('termos');
+        const nomeErro = document.getElementById('nome-erro');
+        const celularErro = document.getElementById('celular-erro');
+        const emailErro = document.getElementById('email-erro');
+        const termosErro = document.getElementById('termos-erro');
+
+        celularInput.addEventListener('input', function () {
+            celularInput.value = mascararCelular(celularInput.value);
+        });
+
+        function validarCampo(input, erroEl, valido, mensagemVazio, mensagemInvalido, obrigatorio) {
+            const vazio = input.value.trim() === '';
+
+            if (vazio && !obrigatorio) {
+                erroEl.textContent = '';
+                erroEl.style.display = 'none';
+                input.classList.remove('invalid');
+                return false;
+            }
+
+            if (vazio) {
+                erroEl.textContent = mensagemVazio;
+                erroEl.style.display = 'block';
+                input.classList.add('invalid');
+                return false;
+            }
+
+            if (!valido) {
+                erroEl.textContent = mensagemInvalido;
+                erroEl.style.display = 'block';
+                input.classList.add('invalid');
+                return false;
+            }
+
+            erroEl.textContent = '';
+            erroEl.style.display = 'none';
+            input.classList.remove('invalid');
+            return true;
+        }
+
+        function validarTermos(obrigatorio) {
+            if (termosInput.checked) {
+                termosErro.textContent = '';
+                termosErro.style.display = 'none';
+                return true;
+            }
+
+            if (obrigatorio) {
+                termosErro.textContent = 'Você precisa aceitar os termos para continuar.';
+                termosErro.style.display = 'block';
+            }
+            return false;
+        }
+
+        function validarCampos(obrigatorio) {
+            const nomeValido = validarCampo(
+                nomeInput, nomeErro, validarNome(nomeInput.value),
+                'Nome completo é obrigatório.', 'Por favor, informe o nome completo.', obrigatorio
+            );
+            const celularValido = validarCampo(
+                celularInput, celularErro, validarCelular(celularInput.value),
+                'Celular é obrigatório.', 'Celular inválido. Formato: (99) 99999-9999.', obrigatorio
+            );
+            const emailValido = validarCampo(
+                emailInput, emailErro, validarEmail(emailInput.value),
+                'E-mail é obrigatório.', 'E-mail inválido.', obrigatorio
+            );
+            const termosValido = validarTermos(obrigatorio);
+
+            return nomeValido && celularValido && emailValido && termosValido;
+        }
+
+        nomeInput.addEventListener('input', () => validarCampos(false));
+        celularInput.addEventListener('input', () => validarCampos(false));
+        emailInput.addEventListener('input', () => validarCampos(false));
+        termosInput.addEventListener('change', () => validarCampos(false));
+
+        async function buildPayload(sessionId) {
+            const nome = nomeInput.value.trim();
+            const celular = celularInput.value.trim();
+            const email = emailInput.value.trim();
+
+            if (!ENCRYPTION_ENABLED) {
+                return { name: nome, email, phone: celular, code: sessionId };
+            }
+
+            const publicKeyResponse = await fetch('/templates/sample/js/crypt/public_key.pem');
+            if (!publicKeyResponse.ok) {
+                throw new Error('Não foi possível carregar a chave pública de criptografia.');
+            }
+            const publicKeyPem = await publicKeyResponse.text();
+
+            const emailHashBuffer = await _digestMessage(email.toLowerCase());
+            const emailHash = _arrayBufferToHexString(emailHashBuffer);
+
+            return {
+                name: nome,
+                code: sessionId,
+                encrypted: true,
+                emailHash,
+                encName: await dbEncryptString(nome, publicKeyPem),
+                encEmail: await dbEncryptString(email, publicKeyPem),
+                encPhone: await dbEncryptString(celular, publicKeyPem),
+            };
+        }
+
+        async function tryCreateUser(payload) {
+            const res = await fetch(`/api/users/?collection=${COLLECTION}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json().catch(() => ({}));
+            return { ok: res.ok, status: res.status, data };
+        }
+
+        function redirectToClaim() {
+            const queryString = new URLSearchParams(window.location.search).toString();
+            window.location.href = queryString
+                ? `/api/sample/claim?${queryString}`
+                : '/api/sample/claim';
+        }
+
+        async function submitForm(e) {
+            if (e) e.preventDefault();
+            if (!validarCampos(true)) return;
+
+            const sessionId = localStorage.getItem('session_id') || '';
+
+            try {
+                const payload = await buildPayload(sessionId);
+                const res = await tryCreateUser(payload);
+
+                if (res.ok) {
+                    redirectToClaim();
+                } else if (res.status === 429) {
+                    window.location.href = '/templates/sample/html/error.html';
+                } else {
+                    const msg = (res.data && (res.data.detail || res.data.message)) || 'Erro ao cadastrar';
+                    await Swal.fire({ icon: 'error', title: 'Erro', text: msg, confirmButtonText: 'OK' });
+                }
+            } catch (_) {
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Ocorreu um erro inesperado. Tente novamente.',
+                    confirmButtonText: 'OK',
+                });
+            }
+        }
+
+        // Enter em um campo de texto ainda dispara o submit nativo do form (trusted event) — mantém funcionando.
+        document.getElementById('formulario').addEventListener('submit', submitForm);
+
+        document.addEventListener('DOMContentLoaded', saveSessionData);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,217 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cadastro — Sample Machine</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/design/tokens.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2214%22>🥤</text></svg>">
+  <style>
+    .wrap { max-width: 520px; margin: 48px auto; padding: 0 16px; }
+    .card { background: var(--color-surface); color:#0A0A0A; border-radius: var(--radius-lg); padding: 24px; }
+    .muted { opacity:.75; }
+    label { display:block; font-size:14px; margin: 14px 0 8px; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    .out { margin-top:16px; background:#f6f7f8; border-radius: var(--radius-sm); padding: 12px; white-space: pre-wrap; font-size: 13px; }
+    .divider { height:1px; background:#e6e8ea; margin:16px 0; }
+    .req { color:#d32f2f; margin-left:4px; }
+    @media (max-width: 600px) {
+      .wrap { margin: 24px auto; padding: 0 12px; }
+      .card { padding: 18px; border-radius: var(--radius-md); }
+      .row { grid-template-columns: 1fr; gap:10px; } 
+      .input, input, select, button { font-size:16px; }
+      #submitBtn { width:100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1 class="h-heading" style="margin:0 0 8px;">Cadastro</h1>
+      <p class="muted" style="margin:0 0 16px;">Insira os dados do Participante Sample Machine e registre a retirada.</p>
+
+      <form id="form" novalidate>
+        <label for="name">Nome <span class="req">*</span></label>
+        <input class="input" id="name" name="name" required autocomplete="name" />
+
+        <label for="email">Email <span class="req">*</span></label>
+        <input class="input" id="email" name="email" type="email" required autocomplete="email" />
+
+        <div class="row">
+          <div>
+            <label for="registerDay">Dia do cadastro <span class="req">*</span></label>
+            <input class="input" id="registerDay" name="registerDay" type="date" required />
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <h2 class="h-heading" style="margin:0 0 8px; font-size:18px; line-height:24px;">Registrar retirada</h2>
+        <div class="row">
+          <div>
+            <label for="pickedDay">Dia da retirada <span class="req">*</span></label>
+            <input class="input" id="pickedDay" name="pickedDay" type="date" required />
+          </div>
+          <div>
+            <label for="productsPicked">Quantos preservativos? <span class="req">*</span></label>
+            <input class="input" id="productsPicked" name="productsPicked" type="number" inputmode="numeric" min="1" step="1" placeholder="ex.: 1" value="1" required />
+          </div>
+        </div>
+
+        <button class="btn-primary" id="submitBtn" type="submit" style="width:100%; margin-top:16px;">Enviar</button>
+      </form>
+
+      <pre id="out" class="out" aria-live="polite"></pre>
+    </section>
+  </main>
+
+  <script>
+    const COLLECTION = 'sample_users';
+    
+    const out = document.getElementById('out');
+    const form = document.getElementById('form');
+    const btn = document.getElementById('submitBtn');
+
+    const regInput = document.getElementById('registerDay');
+    const pickInput = document.getElementById('pickedDay');
+
+    function toISO(d) {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    function todayISO() { return toISO(new Date()); }
+    function addDays(iso, n) {
+      const [y,m,d] = iso.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      dt.setDate(dt.getDate() + n);
+      return toISO(dt);
+    }
+
+    function setDefaults() {
+      const today = todayISO();
+      if (!regInput.value) regInput.value = today;
+      if (!pickInput.value) pickInput.value = today;
+      document.getElementById('productsPicked').value = 1; 
+    }
+
+    window.addEventListener('DOMContentLoaded', setDefaults);
+    form.addEventListener('reset', () => setTimeout(setDefaults, 0));
+
+    window.addEventListener('message', (event) => {
+      if (event.data === 'fechar') {
+        form.reset();
+        out.textContent = '';
+        setTimeout(setDefaults, 0);
+      }
+      if (event.data === 'limpar_log') {
+        out.textContent = '';
+      }
+    });
+
+    async function tryCreateUser(payload) {
+      const res = await fetch(`/api/users/?collection=${COLLECTION}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, data, statusText: res.statusText };
+    }
+
+    async function tryPickup({ id, email, day, qty }) {
+      const body = { day, productsPicked: Number(qty) || 0 };
+      if (id) body.id = id; else body.email = email;
+
+      const res = await fetch(`/api/users/pickup?collection=${COLLECTION}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, data, statusText: res.statusText };
+    }
+
+    async function tryPickupWithRetry(args) {
+      let last;
+      for (let i = 0; i < 2; i++) {
+        last = await tryPickup(args);
+        if (last.status !== 404) return last;
+        await new Promise(r => setTimeout(r, 150));
+      }
+      return last;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      out.textContent = 'Processando…\n';
+      btn.disabled = true;
+
+      const f = e.target;
+      if (!f.checkValidity()) {
+        out.textContent += 'Preencha todos os campos obrigatórios.\n';
+        btn.disabled = false;
+        return;
+      }
+
+      const regPayload = {
+        name: f.name.value.trim(),
+        email: f.email.value.trim(),
+        registerDay: regInput.value,
+      };
+
+      const pickedDay = pickInput.value;
+      const productsPicked = f.productsPicked.value.trim();
+
+      try {
+        // 1) cadastro
+        const createRes = await tryCreateUser(regPayload);
+
+        if (createRes.ok) {
+          const d = createRes.data || {};
+          out.textContent += `Cadastro realizado!\nPode retirar a partir de: ${d.canPickFrom}\n`;
+        } else if (createRes.status === 409) {
+          out.textContent += `Atenção: E-mail já cadastrado. Prosseguindo com a retirada…\n`;
+        } else {
+          const msg = (createRes.data && (createRes.data.detail || createRes.data.message)) || createRes.statusText || 'Erro no cadastro';
+          throw new Error(msg);
+        }
+
+        // 2) retirada
+        out.textContent += `Registrando retirada…\n`;
+        const createId = (createRes.ok && createRes.data && createRes.data.id) ? createRes.data.id : null;
+
+        const pickupRes = await tryPickupWithRetry({
+          id: createId,
+          email: regPayload.email,
+          day: pickedDay,
+          qty: productsPicked
+        });
+
+        if (!pickupRes.ok) {
+          const detail = (pickupRes.data && (pickupRes.data.detail || pickupRes.data.message)) || pickupRes.statusText || 'Erro no pickup';
+          throw new Error(detail);
+        }
+
+        const p = pickupRes.data || {};
+        out.textContent += `Retirada OK!\nDia: ${p.pickedDay}\nQuantidade: ${p.productsPicked}\n`;
+
+        form.reset();
+        setTimeout(setDefaults, 0);
+        window.parent.postMessage('cadastro_concluido', '*');
+
+      } catch (err) {
+        out.textContent += `Erro: ${err.message}\n`;
+        if (String(err.message).includes('Só pode retirar a partir de')) {
+          const base = regInput.value || todayISO();
+          const tomorrow = addDays(base, 1);
+          out.textContent += `Sugestão: defina "Dia da retirada" como ${tomorrow}.\n`;
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

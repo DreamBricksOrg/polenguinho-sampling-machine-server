@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample Machine</title>
+    <link rel="stylesheet" href="/templates/sample/css/sample-root.css">
+    <link rel="stylesheet" href="/templates/sample/css/cta.css">
+</head>
+
+<body>
+    <div class="container">
+
+        <div class="text-content">
+            <p>GANHE SUA</p>
+            <p>AMOSTRA</p>
+            <p>GRÁTIS</p>
+        </div>
+
+        <div class="button-container">
+            <button class="btn" onclick="proceedToTerms()">CONTINUAR</button>
+        </div>
+    </div>
+
+    <script>
+        function getUrlParameter(name) {
+            return new URLSearchParams(window.location.search).get(name);
+        }
+
+        async function getSessionInfo(sessionId) {
+            try {
+                const response = await fetch(`/api/sample/session/${sessionId}`);
+                if (response.ok) return await response.json();
+            } catch (_) {}
+            return null;
+        }
+
+        async function saveSessionData() {
+            const sessionId = getUrlParameter('sid');
+            if (!sessionId) return;
+
+            localStorage.setItem('session_id', sessionId);
+
+            const sessionInfo = await getSessionInfo(sessionId);
+            if (sessionInfo && sessionInfo.slug) {
+                localStorage.setItem('slug', sessionInfo.slug);
+            }
+        }
+
+        function proceedToTerms() {
+            const queryString = new URLSearchParams(window.location.search).toString();
+            window.location.href = queryString
+                ? `/api/sample/terms?${queryString}`
+                : '/api/sample/terms';
+        }
+
+        document.addEventListener('DOMContentLoaded', saveSessionData);
+    </script>
+</body>
+
+</html>
