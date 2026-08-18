@@ -15,6 +15,8 @@ from .schemas import (
     SessionGetResponse,
     SessionPickupRequest,
     SessionPickupResponse,
+    SessionTermsRequest,
+    SessionTermsResponse,
     UserGetResponse,
     UserInitRequest,
     UserInitResponse,
@@ -149,6 +151,11 @@ async def start_static_session(request: Request):
         url=f"/api/sample/form?sid={doc['_id']}&slug={doc['slug']}",
         status_code=302,
     )
+
+
+@session_router.post("/session/terms", response_model=SessionTermsResponse)
+async def accept_terms(payload: SessionTermsRequest):
+    return await SessionService().accept_terms(payload)
 
 
 @session_router.post("/session/pickup", response_model=SessionPickupResponse)

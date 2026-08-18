@@ -26,12 +26,19 @@ class SessionRepository:
             return_document=ReturnDocument.AFTER,
         )
 
+    async def try_mark_terms_accepted(self, session_id: str, now):
+        return await self.collection.find_one_and_update(
+            {"_id": session_id, "status": {"$in": ["pending", "form_shown"]}},
+            {"$set": {"status": "terms_accepted", "terms_accepted_at": now}},
+            return_document=ReturnDocument.AFTER,
+        )
+
     async def try_start_processing(self, session_id: str, slug: str, now):
         return await self.collection.find_one_and_update(
             {
                 "_id": session_id,
                 "slug": slug,
-                "status": "form_shown",
+                "status": {"$in": ["form_shown", "terms_accepted"]},
                 "processing": {"$ne": True},
             },
             {"$set": {"processing": True, "status": "processing", "processing_started_at": now}},

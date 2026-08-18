@@ -4,23 +4,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sample Machine</title>
-    <link rel="stylesheet" href="/templates/sample/css/sample-root.css">
-    <link rel="stylesheet" href="/templates/sample/css/cta.css">
+    <title>Sample Machine - Boas-vindas</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 0; padding: 2rem; background: #f4f4f5; color: #18181b; }
+        .container { max-width: 480px; margin: 0 auto; background: #fff; border: 1px solid #e4e4e7; border-radius: 8px; padding: 1.5rem; }
+        .page-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; color: #71717a; margin-bottom: .5rem; }
+        h1 { font-size: 1.3rem; margin: 0 0 .75rem; }
+        p { margin: .25rem 0; line-height: 1.5; }
+        .btn { margin-top: 1.5rem; padding: .75rem 1.5rem; font-size: 1rem; border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
+    </style>
 </head>
 
 <body>
     <div class="container">
+        <div class="page-tag">welcome.html — tela inicial / CTA</div>
+        <h1>GANHE SUA AMOSTRA GRÁTIS</h1>
+        <p>Salva <code>sid</code> e <code>slug</code> no localStorage e envia para os termos.</p>
 
-        <div class="text-content">
-            <p>GANHE SUA</p>
-            <p>AMOSTRA</p>
-            <p>GRÁTIS</p>
-        </div>
-
-        <div class="button-container">
-            <button class="btn" onclick="proceedToTerms()">CONTINUAR</button>
-        </div>
+        <button class="btn" onclick="proceedToTerms()">CONTINUAR</button>
     </div>
 
     <script>

@@ -21,6 +21,8 @@ from .schemas import (
     SessionGetResponse,
     SessionPickupRequest,
     SessionPickupResponse,
+    SessionTermsRequest,
+    SessionTermsResponse,
     UserGetResponse,
     UserInitRequest,
     UserInitResponse,
@@ -130,9 +132,31 @@ class SessionService:
             short_url=session.get("short_url"),
             created_at=session.get("created_at"),
             form_opened_at=session.get("form_opened_at"),
+            terms_accepted_at=session.get("terms_accepted_at"),
             processing_started_at=session.get("processing_started_at"),
             completed_at=session.get("completed_at"),
         )
+
+    async def accept_terms(self, req: SessionTermsRequest) -> SessionTermsResponse:
+        """Marca a sessão como terms_accepted após o envio do formulário."""
+        doc = await self.sessions.try_mark_terms_accepted(req.session_id, now_utc())
+        if doc:
+            log.info("session-terms-accepted", session_id=req.session_id)
+            LogSender().log(
+                "termos_aceitos",
+                additional={"session_id": req.session_id},
+                status="SUCCESS",
+                tags=["formulario", "termos", "servidor"],
+            )
+            return SessionTermsResponse(status=doc["status"], session_id=req.session_id)
+
+        session = await self.sessions.find(req.session_id)
+        if not session:
+            raise HTTPException(404, "Sessão inválida ou expirada")
+        if session["status"] == "terms_accepted":
+            # reenvio/refresh do form: idempotente
+            return SessionTermsResponse(status="terms_accepted", session_id=req.session_id)
+        raise HTTPException(409, "Sessão já encerrada ou em processamento")
 
     async def complete_session(self, req: SessionCompleteRequest) -> SessionCompleteResponse:
         from domains.machine.services import MachineService
@@ -260,7 +284,7 @@ def start_of_day_utc(value) -> datetime:
 def user_response(doc: dict) -> UserGetResponse:
     return UserGetResponse(
         id=doc["_id"],
-        name=doc["name"],
+        name=doc.get("name"),
         email=doc["email"],
         phone=doc.get("phone"),
         status=doc.get("status", "registered"),
@@ -339,18 +363,20 @@ class UserService:
                         detail=f"Aguarde até {can_pick_at.isoformat()} para retirar novamente",
                     )
 
-            updated = await repo.add_pick(
-                {"_id": existing["_id"]},
-                now,
-                {
-                    "name": name_value,
-                    "phone": phone_value,
-                    "emailHash": ehash,
-                    "lastPick": now,
-                    "canPickFrom": now + cooldown,
-                    "updatedAt": now,
-                },
-            )
+            # name/phone são opcionais: só sobrescreve o que veio preenchido,
+            # para não apagar dados de um cadastro anterior mais completo.
+            pick_fields = {
+                "emailHash": ehash,
+                "lastPick": now,
+                "canPickFrom": now + cooldown,
+                "updatedAt": now,
+            }
+            if name_value:
+                pick_fields["name"] = name_value
+            if phone_value:
+                pick_fields["phone"] = phone_value
+
+            updated = await repo.add_pick({"_id": existing["_id"]}, now, pick_fields)
             log.info("user-repick", id=existing["_id"], collection=repo.collection_name)
             LogSender().log(
                 "formulario_enviado",
@@ -367,7 +393,7 @@ class UserService:
             )
             return UserInitResponse(
                 id=updated["_id"],
-                name=updated["name"],
+                name=updated.get("name"),
                 email=updated["email"],
                 status=updated.get("status", "registered"),
                 registerDay=updated["registerDay"],
@@ -416,7 +442,7 @@ class UserService:
         )
         return UserInitResponse(
             id=reg_id,
-            name=doc["name"],
+            name=doc.get("name"),
             email=doc["email"],
             status=doc["status"],
             registerDay=doc["registerDay"],

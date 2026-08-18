@@ -5,14 +5,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sample Machine - Termos</title>
-    <link rel="stylesheet" href="/templates/sample/css/sample-root.css">
-    <link rel="stylesheet" href="/templates/sample/css/terms.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 0; padding: 2rem; background: #f4f4f5; color: #18181b; }
+        .container { max-width: 480px; margin: 0 auto; background: #fff; border: 1px solid #e4e4e7; border-radius: 8px; padding: 1.5rem; }
+        .page-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; color: #71717a; margin-bottom: .5rem; }
+        h1 { font-size: 1.3rem; margin: 0 0 .75rem; }
+        p { margin: .5rem 0; line-height: 1.5; }
+        /* altura fixa + scroll: o JS só libera o checkbox ao chegar no fim do texto */
+        .terms-content { max-height: 260px; overflow-y: auto; border: 1px solid #e4e4e7; border-radius: 4px; padding: .75rem; font-size: .85rem; }
+        .checkbox-container { display: block; margin-top: 1rem; font-size: .9rem; }
+        .after-terms-text { font-size: .75rem; color: #71717a; }
+        .btn { margin-top: 1rem; padding: .75rem 1.5rem; font-size: 1rem; border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
+    </style>
 </head>
 
 <body>
     <div class="container">
         <div class="content">
+            <div class="page-tag">terms.html — termos LGPD</div>
+            <h1>TERMOS E CONDIÇÕES</h1>
 
             <div class="terms-content">
                 <p>

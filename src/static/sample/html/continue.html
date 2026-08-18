@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample Machine - Continuar</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 0; padding: 2rem; background: #f4f4f5; color: #18181b; }
+        .container { max-width: 480px; margin: 0 auto; background: #fff; border: 1px solid #e4e4e7; border-radius: 8px; padding: 1.5rem; }
+        .page-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; color: #71717a; margin-bottom: .5rem; }
+        h1 { font-size: 1.3rem; margin: 0 0 .75rem; }
+        p { margin: .25rem 0; line-height: 1.5; }
+        .btn { margin-top: 1.5rem; padding: .75rem 1.5rem; font-size: 1rem; border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="page-tag">continue.html — pós-cadastro</div>
+        <h1>CADASTRO CONCLUÍDO</h1>
+        <p>Página entre o formulário e a retirada. O cadastro já foi salvo.</p>
+        <p>Ao continuar, vai para <code>claim.html</code>, que dispara a liberação da amostra.</p>
+
+        <button class="btn" onclick="proceedToClaim()">CONTINUAR</button>
+    </div>
+
+    <script>
+        function proceedToClaim() {
+            const queryString = new URLSearchParams(window.location.search).toString();
+            window.location.href = queryString
+                ? `/api/sample/claim?${queryString}`
+                : '/api/sample/claim';
+        }
+    </script>
+</body>
+
+</html>

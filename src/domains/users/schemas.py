@@ -27,6 +27,15 @@ class SessionPickupResponse(BaseModel):
     session_id: str
 
 
+class SessionTermsRequest(BaseModel):
+    session_id: str
+
+
+class SessionTermsResponse(BaseModel):
+    status: str
+    session_id: str
+
+
 class QRCodeInitResponse(BaseModel):
     session_id: str
     short_url: HttpUrl
@@ -38,18 +47,22 @@ class QRCodeInitResponse(BaseModel):
 class SessionGetResponse(BaseModel):
     session_id: str
     slug: str
-    status: Literal["pending", "form_shown", "processing", "completed", "failed", "aborted"]
+    status: Literal[
+        "pending", "form_shown", "terms_accepted", "processing", "completed", "failed", "aborted"
+    ]
     mode: Optional[str] = None
     short_url: Optional[AnyUrl] = None
     created_at: datetime
     form_opened_at: Optional[datetime] = None
+    terms_accepted_at: Optional[datetime] = None
     processing_started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
 
 # ---------- Requests ----------
 class UserInitRequest(BaseModel):
-    name: str = Field(..., min_length=1)
+    # Só e-mail (ou encEmail+emailHash) é obrigatório; name/phone são opcionais.
+    name: Optional[str] = Field(None, min_length=1)
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, description="Celular no formato (99) 99999-9999")
     code: str
@@ -68,8 +81,8 @@ class UserInitRequest(BaseModel):
     @model_validator(mode="after")
     def _check_encrypted_or_plain(self) -> "UserInitRequest":
         if self.encrypted:
-            if not (self.encName and self.encEmail and self.emailHash):
-                raise ValueError("Cadastro criptografado requer encName, encEmail e emailHash")
+            if not (self.encEmail and self.emailHash):
+                raise ValueError("Cadastro criptografado requer encEmail e emailHash")
         elif not self.email:
             raise ValueError("email é obrigatório")
         return self
@@ -91,7 +104,7 @@ class UserPickupRequest(BaseModel):
 # armazenado/retornado é o texto cifrado (RSA+AES), que não tem formato de e-mail.
 class UserInitResponse(BaseModel):
     id: str
-    name: str
+    name: Optional[str] = None
     email: str
     status: Status
     registerDay: datetime
@@ -100,7 +113,7 @@ class UserInitResponse(BaseModel):
 
 class UserGetResponse(BaseModel):
     id: str
-    name: str
+    name: Optional[str] = None
     email: str
     phone: Optional[str] = None
     status: Status
