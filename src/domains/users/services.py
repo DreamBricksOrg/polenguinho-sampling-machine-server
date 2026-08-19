@@ -88,6 +88,12 @@ def is_within_recall_window(cookie_value: str | None, now: datetime, hours: floa
 
 
 def is_within_business_hours(now: datetime, timezone_name: str, open_hour: int, close_hour: int) -> bool:
+    """Abertura e fechamento zerados desligam a checagem — atende sempre.
+
+    Sem essa saída, `0 <= hora < 0` nunca é verdade e a máquina ficaria
+    permanentemente fechada, que é o oposto de desligar a restrição."""
+    if open_hour == 0 and close_hour == 0:
+        return True
     local_hour = now.astimezone(ZoneInfo(timezone_name)).hour
     return open_hour <= local_hour < close_hour
 
