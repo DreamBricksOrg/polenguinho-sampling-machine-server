@@ -20,12 +20,29 @@
         <div class="page-tag">continue.html — pós-cadastro</div>
         <h1>CADASTRO CONCLUÍDO</h1>
         <p>Página entre o formulário e a retirada. O cadastro já foi salvo.</p>
-        <p>Ao continuar, vai para <code>claim.html</code>, que dispara a liberação da amostra.</p>
+        <p>Ao continuar, vai para <code>claim.html</code>, que acompanha a liberação da amostra.</p>
 
         <button class="btn" onclick="proceedToClaim()">CONTINUAR</button>
     </div>
 
     <script>
+        // Quem chega aqui vindo do recall pulou o form.html, que é quem
+        // normalmente grava esses valores — sem isto o claim.html leria a
+        // sessão ANTERIOR, já concluída, e pularia direto para o thanks.
+        function saveSessionData() {
+            const params = new URLSearchParams(window.location.search);
+            const sessionId = params.get('sid');
+            const slug = params.get('slug');
+            if (sessionId) {
+                localStorage.setItem('session_id', sessionId);
+            }
+            if (slug) {
+                localStorage.setItem('slug', slug);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', saveSessionData);
+
         function proceedToClaim() {
             const queryString = new URLSearchParams(window.location.search).toString();
             window.location.href = queryString

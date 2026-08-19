@@ -172,15 +172,21 @@
             return { ok: res.ok, status: res.status, data };
         }
 
-        // Marca a sessão como terms_accepted. Falha aqui não bloqueia o fluxo:
-        // a retirada aceita tanto form_shown quanto terms_accepted.
-        async function markTermsAccepted(sessionId) {
+        // Marca a sessão como terms_accepted e amarra o cadastro à sessão — é
+        // por esse user_id que o servidor marca a retirada quando a máquina
+        // confirmar o brinde. Falha aqui não bloqueia o fluxo: a retirada
+        // aceita tanto form_shown quanto terms_accepted.
+        async function markTermsAccepted(sessionId, userId) {
             if (!sessionId) return;
             try {
                 await fetch('/api/sample/session/terms', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ session_id: sessionId }),
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        user_id: userId || null,
+                        collection: COLLECTION,
+                    }),
                 });
             } catch (_) { }
         }
@@ -188,8 +194,8 @@
         function redirectToContinue() {
             const queryString = new URLSearchParams(window.location.search).toString();
             window.location.href = queryString
-                ? `/templates/sample/html/continue.html?${queryString}`
-                : '/templates/sample/html/continue.html';
+                ? `/api/sample/continue?${queryString}`
+                : '/api/sample/continue';
         }
 
         async function submitForm(e) {
@@ -203,7 +209,7 @@
                 const res = await tryCreateUser(payload);
 
                 if (res.ok) {
-                    await markTermsAccepted(sessionId);
+                    await markTermsAccepted(sessionId, res.data && res.data.id);
                     redirectToContinue();
                 } else if (res.status === 429) {
                     window.location.href = '/templates/sample/html/error.html';

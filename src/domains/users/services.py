@@ -12,7 +12,6 @@ from pymongo.errors import DuplicateKeyError
 
 from infrastructure.config import settings
 from integrations.logcenter.log_sender import LogSender
-from integrations.shortener.client import create_short_link
 from infrastructure.hardware.udp_sender import UDPSender
 from .schemas import (
     QRCodeInitResponse,
@@ -61,16 +60,31 @@ def is_ip_blocked(doc: dict | None, now: datetime, hours: float) -> bool:
     return 0 <= elapsed_seconds < hours * 3600
 
 
-def is_pickup_blocked(cookie_value: str | None, now: datetime, hours: float) -> bool:
+def parse_pickup_cookie(cookie_value: str | None) -> tuple[str, int] | None:
+    """Devolve (session_id, timestamp) do cookie, ou None se estiver corrompido."""
     if not cookie_value:
-        return False
+        return None
     try:
-        _, ts_str = cookie_value.rsplit(":", 1)
-        ts = int(ts_str)
+        session_id, ts_str = cookie_value.rsplit(":", 1)
+        return session_id, int(ts_str)
     except (ValueError, AttributeError):
-        return False
-    elapsed_seconds = now.timestamp() - ts
-    return 0 <= elapsed_seconds < hours * 3600
+        return None
+
+
+def _within_window(ts: int, now: datetime, hours: float) -> bool:
+    return 0 <= now.timestamp() - ts < hours * 3600
+
+
+def is_pickup_blocked(cookie_value: str | None, now: datetime, hours: float) -> bool:
+    parsed = parse_pickup_cookie(cookie_value)
+    return bool(parsed) and _within_window(parsed[1], now, hours)
+
+
+def is_within_recall_window(cookie_value: str | None, now: datetime, hours: float) -> bool:
+    """O cookie sobrevive ao bloqueio: a janela de reconhecimento é mais longa
+    que a de bloqueio, e é o que permite pular o form de quem já se cadastrou."""
+    parsed = parse_pickup_cookie(cookie_value)
+    return bool(parsed) and _within_window(parsed[1], now, hours)
 
 
 def is_within_business_hours(now: datetime, timezone_name: str, open_hour: int, close_hour: int) -> bool:
@@ -91,17 +105,15 @@ class SessionService:
 
     async def init_qrcode(self) -> QRCodeInitResponse:
         session_id = str(uuid.uuid4())
-        long_url = f"{settings.CADASTRO_BASE_URL}?sid={session_id}"
-        try:
-            shortener_data, short_url = await create_short_link(long_url, session_id=session_id)
-        except Exception as exc:
-            log.error("qrcode-init-failed", error=str(exc))
-            raise HTTPException(500, "Falha ao gerar QR/link no encurtador")
+        slug = secrets.token_urlsafe(6)
+        long_url = f"{settings.CADASTRO_BASE_URL}?sid={session_id}&slug={slug}"
 
         doc = {
             "_id": session_id,
-            "slug": shortener_data.slug,
-            "short_url": short_url,
+            "slug": slug,
+            "short_url": long_url,
+            "long_url": long_url,
+            "mode": "with_forms",
             "status": "pending",
             "retire_sent": False,
             "processing": False,
@@ -111,13 +123,12 @@ class SessionService:
             "completed_at": None,
         }
         await self.sessions.create(doc)
-        log.info("sample-session-created", session_id=session_id, short_url=short_url)
+        log.info("sample-session-created", session_id=session_id, long_url=long_url)
         return QRCodeInitResponse(
             session_id=session_id,
-            short_url=short_url,
-            slug=shortener_data.slug,
-            qr_png=shortener_data.qr_png,
-            qr_svg=shortener_data.qr_svg,
+            long_url=long_url,
+            short_url=long_url,
+            slug=slug,
         )
 
     async def get_session_info(self, sid: str) -> SessionGetResponse:
@@ -139,7 +150,8 @@ class SessionService:
 
     async def accept_terms(self, req: SessionTermsRequest) -> SessionTermsResponse:
         """Marca a sessão como terms_accepted após o envio do formulário."""
-        doc = await self.sessions.try_mark_terms_accepted(req.session_id, now_utc())
+        link = {k: v for k, v in (("user_id", req.user_id), ("collection", req.collection)) if v}
+        doc = await self.sessions.try_mark_terms_accepted(req.session_id, now_utc(), link)
         if doc:
             log.info("session-terms-accepted", session_id=req.session_id)
             LogSender().log(
@@ -159,8 +171,6 @@ class SessionService:
         raise HTTPException(409, "Sessão já encerrada ou em processamento")
 
     async def complete_session(self, req: SessionCompleteRequest) -> SessionCompleteResponse:
-        from domains.machine.services import MachineService
-
         doc = await self.sessions.try_start_processing(req.session_id, req.slug, now_utc())
         if not doc:
             session = await self.sessions.find(req.session_id)
@@ -170,19 +180,65 @@ class SessionService:
                 raise HTTPException(400, "Slug não corresponde à sessão")
             raise HTTPException(409, "Sessão já encerrada ou em processamento")
 
-        status_final = "failed"
-        try:
-            LogSender().log("sessao_concluida")
-            status_final = await MachineService().drop_waiting_callback(slug=req.slug)
-            return SessionCompleteResponse(status="ok", session_id=req.session_id)
-        except HTTPException:
-            raise
-        except Exception as exc:
-            log.error("session-complete-error", error=str(exc), session_id=req.session_id, slug=req.slug)
-            raise HTTPException(500, "Erro interno do servidor")
-        finally:
-            await self.sessions.finalize(req.session_id, status_final, now_utc())
-            log.info("session-finalized", session_id=req.session_id, status=status_final)
+        LogSender().log("sessao_concluida")
+        # Mesmo ciclo do modo QR estático ("on" → "1" → "off"): espera até
+        # PICKUP_TIMEOUT_SECONDS pela retirada, muito além do timeout do
+        # RESULTADO.cs. Roda em background e o celular acompanha o desfecho
+        # pelo polling de /session/{sid}, como o claim.html já faz.
+        asyncio.create_task(self._run_pickup(req.session_id))
+        return SessionCompleteResponse(status="processing", session_id=req.session_id)
+
+    async def recall_user(self, cookie_value: str | None, sid: str) -> dict | None:
+        """Reaproveita o cadastro de quem já passou por aqui.
+
+        O cookie guarda a sessão anterior; ela guarda o user_id desde o aceite
+        do formulário. Reconhecendo a pessoa, amarramos o mesmo usuário à sessão
+        nova e a marcamos como terms_accepted — que é o sinal pelo qual o
+        TERMOS.cs libera o totem para o jogo. Devolve a sessão atualizada, ou
+        None quando não dá para reconhecer (e aí o formulário aparece normal)."""
+        now = now_utc()
+
+        if not is_within_recall_window(cookie_value, now, settings.USER_RECALL_HOURS):
+            return None
+
+        previous_sid = parse_pickup_cookie(cookie_value)[0]
+        previous = await self.sessions.find(previous_sid)
+        user_id = (previous or {}).get("user_id")
+        collection = (previous or {}).get("collection")
+        if not user_id or not collection:
+            log.info("recall-no-user-linked", session_id=sid, previous_session_id=previous_sid)
+            return None
+
+        user = await UserRepository(collection).find_by_id(user_id)
+        if not user:
+            log.warning("recall-user-missing", session_id=sid, user_id=user_id, collection=collection)
+            return None
+
+        # O cooldown do cadastro continua valendo: reconhecer alguém não é
+        # autorizar uma retirada fora da janela. Sem recall, cai no formulário
+        # e o create_user devolve o 429 de sempre.
+        can_pick_from = user.get("canPickFrom")
+        if can_pick_from and now < as_utc(can_pick_from):
+            log.info("recall-cooldown-active", session_id=sid, user_id=user_id, can_pick_from=str(can_pick_from))
+            return None
+
+        doc = await self.sessions.try_mark_terms_accepted(
+            sid,
+            now,
+            {"user_id": user_id, "collection": collection, "recalled_from": previous_sid},
+        )
+        if not doc:
+            log.warning("recall-session-not-markable", session_id=sid, user_id=user_id)
+            return None
+
+        log.info("recall-user-applied", session_id=sid, previous_session_id=previous_sid, user_id=user_id)
+        LogSender().log(
+            "cadastro_reaproveitado",
+            additional={"session_id": sid, "previous_session_id": previous_sid, "id": user_id},
+            status="SUCCESS",
+            tags=["formulario", "recall", "servidor"],
+        )
+        return doc
 
     async def open_form(self, sid: str) -> str:
         session = await self.sessions.find(sid)
@@ -253,6 +309,43 @@ class SessionService:
         finally:
             await self.sessions.finalize(session_id, status_final, now_utc())
             log.info("session-finalized", session_id=session_id, status=status_final)
+            if status_final == "completed":
+                await self._mark_user_pickup(session_id)
+
+    async def _mark_user_pickup(self, session_id: str) -> None:
+        """Registra no cadastro que o brinde saiu. Só roda depois da confirmação
+        da máquina — antes disso o usuário está cadastrado, não atendido."""
+        session = await self.sessions.find(session_id)
+        user_id = (session or {}).get("user_id")
+        collection = (session or {}).get("collection")
+
+        if not user_id or not collection:
+            log.warning("pickup-user-link-missing", session_id=session_id, user_id=user_id, collection=collection)
+            return
+
+        try:
+            updated = await UserRepository(collection).mark_session_pickup(user_id, session_id, now_utc())
+        except Exception as exc:
+            log.error("pickup-user-mark-error", error=str(exc), session_id=session_id, user_id=user_id)
+            return
+
+        if not updated:
+            log.warning("pickup-user-not-marked", session_id=session_id, user_id=user_id, collection=collection)
+            return
+
+        log.info(
+            "pickup-user-marked",
+            session_id=session_id,
+            user_id=user_id,
+            collection=collection,
+            products_picked=updated.get("productsPicked"),
+        )
+        LogSender().log(
+            "retirada_registrada_no_cadastro",
+            additional={"session_id": session_id, "id": user_id, "products_picked": updated.get("productsPicked")},
+            status="SUCCESS",
+            tags=["retirada", "cadastro", "servidor"],
+        )
 
 
 def email_hash(email: str) -> str:

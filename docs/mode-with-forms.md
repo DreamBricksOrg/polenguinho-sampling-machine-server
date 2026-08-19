@@ -11,7 +11,7 @@ Neste modo o usuário escaneia um QR Code, preenche um formulário no celular e 
      |                    |                           |                      |
      | POST /qrcode/init  |                           |                      |
      |—————————————————→  |                           |                      |
-     |  QR + short_url    |                           |                      |
+     |  QR + long_url     |                           |                      |
      |←—————————————————  |                           |                      |
      |                    |                           |                      |
      | [exibe QR na tela] |                           |                      |
@@ -33,12 +33,14 @@ UDP "next" ←—————————————|   [marca form_shown]     
      |                    |                           |                      |
      |                    |   POST /api/users/        |                      |
      |                    |  ←————————————————————————|                      |
-     |                    |   POST /api/users/pickup  |                      |
+     |                    |  ←————————————————————————|                      |
+     |                    |   POST /api/sample/session/terms |                      |
+     |                    |   GET /sample/continue?sid |                      |
      |                    |  ←————————————————————————|                      |
      |                    |   GET /sample/claim?sid   |                      |
      |                    |  ←————————————————————————|                      |
      |                    |                           |                      |
-     |                    |   POST /sample/session/complete                  |
+     | POST /sample/session/complete                  |                      |
      |                    |  ←————————————————————————|                      |
      |                    |———— Serial "drop" ————————————————————————————→  |
      |                    |←——— Serial "dropped" ————————————————————————————|
@@ -103,14 +105,15 @@ POST /api/sample/qrcode/init
 ```json
 {
   "session_id": "uuid",
-  "short_url": "https://go.exemplo.com/abc",
+  "long_url": "https://samplemachine.ngrok.app/api/sample/welcome?sid=uuid&slug=abc",
+  "short_url": "https://samplemachine.ngrok.app/api/sample/welcome?sid=uuid&slug=abc",
   "slug": "abc",
-  "qr_png": "https://...",
-  "qr_svg": "https://..."
+  "qr_png": null,
+  "qr_svg": null
 }
 ```
 
-Use `short_url` para exibir o QR Code. Use `qr_png` ou `qr_svg` se quiser renderizar a imagem diretamente.
+Use `long_url` para exibir/gerar o QR Code no Unity. `short_url` é mantido apenas como compatibilidade e recebe o mesmo valor.
 
 ---
 
@@ -182,11 +185,13 @@ Estes são chamados pelo frontend HTML automaticamente — você não precisa im
 |--------|--------------------------------|--------------------------------------|
 | GET    | `/api/sample/welcome?sid=`     | Exibe landing page, salva sid        |
 | GET    | `/api/sample/terms?sid=`       | Exibe termos                         |
-| GET    | `/api/sample/form?sid=`        | Exibe form, marca sessão, envia UDP  |
+| GET    | `/api/sample/form?sid=`        | Exibe form, bloqueia por cookie/IP, marca sessao, envia UDP |
 | POST   | `/api/users/?collection=machine` | Cadastra usuário                   |
-| POST   | `/api/users/pickup/?collection=machine` | Registra retirada            |
+| GET    | `/api/sample/continue?sid=`    | Exibe tela intermediária pós-cadastro |
 | GET    | `/api/sample/claim?sid=`       | Exibe tela de retirada               |
-| POST   | `/api/sample/session/complete` | Completa sessão, dispara serial drop |
+| POST   | `/api/sample/session/terms`    | Marca aceite/cadastro concluído |
+
+`POST /api/sample/session/complete` é chamado pelo Unity em `RESULTADO.cs`, não pelo celular. Ele completa a sessão e dispara o `drop`. O bloqueio por cookie/IP só é gravado quando o celular consulta uma sessão com status `completed`, depois da confirmação serial de que o brinde caiu.
 
 ---
 

@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     SAMPLE_ADMIN_USER: str = Field("sampleadmin", env="SAMPLE_ADMIN_USER")
     SAMPLE_ADMIN_PASSWORD: str = Field("31773177", env="SAMPLE_ADMIN_PASSWORD")
 
-    # Shortener — obrigatório apenas com USE_FORM=true
+    # Shortener — opcional; mantido para compatibilidade com integrações antigas
     SHORTENER_BASE_URL: str = Field("https://go.dbpe.com.br", env="SHORTENER_BASE_URL")
     SHORTENER_USER: Optional[str] = Field(default=None, env="SHORTENER_USER")
     SHORTENER_PASSWORD: Optional[str] = Field(default=None, env="SHORTENER_PASSWORD")
@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     PICKUP_TIMEOUT_SECONDS: int = Field(60, env="PICKUP_TIMEOUT_SECONDS")
     PICKUP_COOLDOWN_HOURS: float = Field(12, env="PICKUP_COOLDOWN_HOURS")
     PICKUP_COOKIE_BLOCK_HOURS: float = Field(12, env="PICKUP_COOKIE_BLOCK_HOURS")
+    # Por quanto tempo o cookie ainda identifica quem já se cadastrou, para
+    # pular o formulário numa próxima visita. Precisa ser maior que
+    # PICKUP_COOKIE_BLOCK_HOURS para ter efeito; 0 desliga o reconhecimento.
+    USER_RECALL_HOURS: float = Field(720, env="USER_RECALL_HOURS")
 
     # Horário de funcionamento (formato 24h, ex.: 10 às 20)
     SAMPLE_OPEN_HOUR: int = Field(10, env="SAMPLE_OPEN_HOUR")
@@ -88,8 +92,6 @@ class Settings(BaseSettings):
                     "JWT_SECRET": self.JWT_SECRET,
                     "ADMIN_CREATION_TOKEN": self.ADMIN_CREATION_TOKEN,
                     "REDIS_URL": self.REDIS_URL,
-                    "SHORTENER_USER": self.SHORTENER_USER,
-                    "SHORTENER_PASSWORD": self.SHORTENER_PASSWORD
                 }.items() if not val
             ]
             if missing:

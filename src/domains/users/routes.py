@@ -45,6 +45,46 @@ def _extract_client_ip(request: Request) -> str:
         or (request.client.host if request.client else "unknown")
     )
 
+
+def _set_pickup_block_cookie(response: Response, session_id: str) -> None:
+    response.set_cookie(
+        key=PICKUP_BLOCK_COOKIE_NAME,
+        value=build_pickup_block_cookie_value(session_id, now_utc()),
+        # O cookie precisa sobreviver ao bloqueio para ainda reconhecer a
+        # pessoa depois: quem manda no tempo de vida é a maior das duas janelas.
+        max_age=int(max(settings.PICKUP_COOKIE_BLOCK_HOURS, settings.USER_RECALL_HOURS) * 3600),
+        httponly=True,
+        samesite="lax",
+        secure=settings.ENV != "dev",
+        path="/api/sample",
+    )
+
+
+async def _is_pickup_blocked_for_request(request: Request, log_prefix: str) -> bool:
+    client_ip = _extract_client_ip(request)
+    addr_doc = await AddressRepository().record_access(client_ip, now_saopaulo())
+
+    if is_ip_blocked(addr_doc, now_utc(), settings.PICKUP_COOKIE_BLOCK_HOURS):
+        LogSender().log(
+            f"{log_prefix}_blocked_ip",
+            additional={"ip": client_ip},
+            status="ERROR",
+            tags=["form", "blocked", "ip", "server"],
+        )
+        return True
+
+    cookie_value = request.cookies.get(PICKUP_BLOCK_COOKIE_NAME)
+    if is_pickup_blocked(cookie_value, now_utc(), settings.PICKUP_COOKIE_BLOCK_HOURS):
+        LogSender().log(
+            f"{log_prefix}_blocked_cookie",
+            additional={"cookie": cookie_value},
+            status="ERROR",
+            tags=["form", "blocked", "cookie", "server"],
+        )
+        return True
+
+    return False
+
 _BASE_DIR = Path(__file__).resolve().parents[2]
 templates = Jinja2Templates(directory=str(_BASE_DIR / "static" / "sample" / "html"))
 
@@ -123,27 +163,7 @@ async def start_static_session(request: Request):
             {"open_hour": settings.SAMPLE_OPEN_HOUR, "close_hour": settings.SAMPLE_CLOSE_HOUR},
         )
 
-    client_ip = _extract_client_ip(request)
-    addr_repo = AddressRepository()
-    addr_doc = await addr_repo.record_access(client_ip, now_saopaulo())
-
-    if is_ip_blocked(addr_doc, now_utc(), settings.PICKUP_COOKIE_BLOCK_HOURS):
-        LogSender().log(
-            "servidor_start_blocked_ip",
-            additional={"ip": client_ip},
-            status="ERROR",
-            tags=["form", "start", "blocked", "ip", "server"],
-        )
-        return templates.TemplateResponse(request, "error.html")
-
-    cookie_value = request.cookies.get(PICKUP_BLOCK_COOKIE_NAME)
-    if is_pickup_blocked(cookie_value, now_utc(), settings.PICKUP_COOKIE_BLOCK_HOURS):
-        LogSender().log(
-            "servidor_start_blocked",
-            additional={"cookie": cookie_value},
-            status="ERROR",
-            tags=["form", "start", "blocked", "server"],
-        )
+    if await _is_pickup_blocked_for_request(request, "servidor_start"):
         return templates.TemplateResponse(request, "error.html")
 
     doc = await SessionService().init_static_session()
@@ -171,16 +191,8 @@ async def html_thanks(request: Request):
 @session_router.get("/session/{sid}", response_model=SessionGetResponse)
 async def get_session_info(sid: str, response: Response, request: Request):
     info = await SessionService().get_session_info(sid)
-    if info.status == "completed" and info.mode == "qrcode_static":
-        response.set_cookie(
-            key=PICKUP_BLOCK_COOKIE_NAME,
-            value=build_pickup_block_cookie_value(sid, now_utc()),
-            max_age=int(settings.PICKUP_COOKIE_BLOCK_HOURS * 3600),
-            httponly=True,
-            samesite="lax",
-            secure=settings.ENV != "dev",
-            path="/api/sample",
-        )
+    if info.status == "completed":
+        _set_pickup_block_cookie(response, sid)
         client_ip = _extract_client_ip(request)
         await AddressRepository().record_pickup(client_ip, sid, now_saopaulo())
     return info
@@ -191,8 +203,15 @@ async def html_claim(request: Request):
     return _render_logged_page(request, "claim.html", "servidor_claim", "claim")
 
 
+@session_router.get("/continue", response_class=HTMLResponse)
+async def html_continue(request: Request):
+    return _render_logged_page(request, "continue.html", "servidor_continue", "continue")
+
+
 @session_router.get("/welcome", response_class=HTMLResponse)
 async def html_welcome(request: Request):
+    if await _is_pickup_blocked_for_request(request, "servidor_welcome"):
+        return templates.TemplateResponse(request, "error.html")
     return _render_logged_page(request, "welcome.html", "pagina_boasvindas_acessada", "welcome")
 
 
@@ -204,7 +223,26 @@ async def html_form(request: Request):
     if not sid:
         raise HTTPException(400, "sid ausente")
     try:
+        if await _is_pickup_blocked_for_request(request, "servidor_form"):
+            return templates.TemplateResponse(request, "error.html")
         template_name = await SessionService().open_form(sid)
+
+        # Já conhecemos essa pessoa? Então o formulário não precisa aparecer:
+        # amarra o cadastro antigo à sessão nova (o que já libera o totem) e
+        # manda direto para a tela de continuar.
+        recalled = await SessionService().recall_user(request.cookies.get(PICKUP_BLOCK_COOKIE_NAME), sid)
+        if recalled:
+            LogSender().log(
+                "servidor_form_pulado",
+                additional={"session_id": sid, "id": recalled.get("user_id")},
+                status="SUCCESS",
+                tags=["formulario", "recall", "pagina", "servidor"],
+            )
+            return RedirectResponse(
+                url=f"/api/sample/continue?sid={sid}&slug={recalled['slug']}",
+                status_code=302,
+            )
+
         LogSender().log("servidor_form", additional={"session_id": sid}, status="SUCCESS", tags=["formulario", "pagina", "servidor"])
         context = {"encryption_enabled": settings.ENCRYPTION_ENABLED} if template_name == "form.html" else {}
         return templates.TemplateResponse(request, template_name, context)

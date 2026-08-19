@@ -26,10 +26,10 @@ class SessionRepository:
             return_document=ReturnDocument.AFTER,
         )
 
-    async def try_mark_terms_accepted(self, session_id: str, now):
+    async def try_mark_terms_accepted(self, session_id: str, now, extra: dict | None = None):
         return await self.collection.find_one_and_update(
             {"_id": session_id, "status": {"$in": ["pending", "form_shown"]}},
-            {"$set": {"status": "terms_accepted", "terms_accepted_at": now}},
+            {"$set": {"status": "terms_accepted", "terms_accepted_at": now, **(extra or {})}},
             return_document=ReturnDocument.AFTER,
         )
 
@@ -95,6 +95,25 @@ class UserRepository:
         return await self.collection.find_one_and_update(
             query,
             {"$push": {"pickHistory": pick_at}, "$set": fields},
+            return_document=ReturnDocument.AFTER,
+        )
+
+    async def mark_session_pickup(self, user_id: str, session_id: str, now) -> dict | None:
+        """Marca a retirada confirmada pela máquina no documento do cadastro.
+
+        O filtro por pickedSessionId torna a operação idempotente: reprocessar
+        a mesma sessão não incrementa productsPicked de novo."""
+        return await self.collection.find_one_and_update(
+            {"_id": user_id, "pickedSessionId": {"$ne": session_id}},
+            {
+                "$inc": {"productsPicked": 1},
+                "$set": {
+                    "status": "picked",
+                    "pickedDay": now,
+                    "pickedSessionId": session_id,
+                    "updatedAt": now,
+                },
+            },
             return_document=ReturnDocument.AFTER,
         )
 

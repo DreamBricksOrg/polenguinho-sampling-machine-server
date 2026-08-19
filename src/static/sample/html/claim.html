@@ -37,15 +37,23 @@
             return res.json();
         }
 
-        // Fluxo atual (totem/Unity): dispara o drop e o Unity cuida do resto
-        async function completeSession(sessionId, slug) {
-            try {
-                await fetch('/api/sample/session/complete', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ session_id: sessionId, slug }),
-                });
-            } catch (_) { }
+        // Fluxo com Unity: o totem fecha a sessão no RESULTADO.cs.
+        // O celular apenas acompanha o status para não disparar retirada cedo.
+        async function waitForTotemAndPoll(sessionId) {
+            const started = Date.now();
+            while (Date.now() - started < POLL_MAX_MS) {
+                await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+                const session = await fetchSession(sessionId);
+                if (session.status === 'completed') {
+                    window.location.href = '/api/sample/thanks';
+                    return;
+                }
+                if (session.status === 'failed' || session.status === 'aborted') {
+                    goToError();
+                    return;
+                }
+            }
+            goToError();
         }
 
         // Fluxo QR estático: agenda o ciclo no servidor e acompanha por polling.
@@ -94,7 +102,7 @@
                 if (session.mode === 'qrcode_static') {
                     await startPickupAndPoll(sessionId, slug, session.status);
                 } else {
-                    await completeSession(sessionId, slug);
+                    await waitForTotemAndPoll(sessionId);
                 }
             } catch (_) {
                 goToError();

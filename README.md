@@ -30,7 +30,7 @@ Unity → POST /api/sample/qrcode/init → QR Code → celular preenche form →
 POST /api/sample/session/complete → Arduino ("drop") → "dropped" → UDP "next"
 ```
 
-- `POST /api/sample/qrcode/init` — gera QR e inicia sessão
+- `POST /api/sample/qrcode/init` — inicia sessão e devolve a URL longa para gerar o QR
 - `GET /api/sample/session/{session_id}` — consulta status (`pending → form_shown → processing → completed/failed`)
 - Rotas do celular (`/welcome`, `/terms`, `/form`, `/claim`, `/api/users/...`) são chamadas automaticamente pelo frontend HTML
 

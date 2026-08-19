@@ -29,6 +29,10 @@ class SessionPickupResponse(BaseModel):
 
 class SessionTermsRequest(BaseModel):
     session_id: str
+    # Vínculo com o cadastro recém-criado: é o que permite marcar a retirada
+    # no documento do usuário quando a máquina confirmar que o brinde caiu.
+    user_id: Optional[str] = None
+    collection: Optional[str] = None
 
 
 class SessionTermsResponse(BaseModel):
@@ -38,10 +42,11 @@ class SessionTermsResponse(BaseModel):
 
 class QRCodeInitResponse(BaseModel):
     session_id: str
+    long_url: HttpUrl
     short_url: HttpUrl
     slug: str
-    qr_png: HttpUrl
-    qr_svg: HttpUrl
+    qr_png: Optional[HttpUrl] = None
+    qr_svg: Optional[HttpUrl] = None
 
 
 class SessionGetResponse(BaseModel):
