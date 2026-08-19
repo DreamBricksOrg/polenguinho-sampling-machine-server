@@ -4,22 +4,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sample Machine - Retire sua Amostra</title>
+    <title>Sample Machine - Liberando sua amostra</title>
     <style>
         body { font-family: system-ui, sans-serif; margin: 0; padding: 2rem; background: #f4f4f5; color: #18181b; }
         .container { max-width: 480px; margin: 0 auto; background: #fff; border: 1px solid #e4e4e7; border-radius: 8px; padding: 1.5rem; }
         .page-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; color: #71717a; margin-bottom: .5rem; }
         h1 { font-size: 1.3rem; margin: 0 0 .75rem; }
         p { margin: .25rem 0; line-height: 1.5; }
+        .status { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e4e4e7; color: #71717a; font-size: .9rem; }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <div class="page-tag">claim.html — retirada / liberação</div>
-        <h1>RETIRE SUA AMOSTRA</h1>
-        <p>Dispara o drop na máquina (totem/Unity) ou o pickup no modo QR estático.</p>
-        <p>No modo QR estático faz polling da sessão e vai para <code>thanks</code> ou <code>error</code>.</p>
+        <!-- claim.html — tela de espera enquanto a máquina libera a amostra -->
+        <h1 id="titulo">VÁ ATÉ A MÁQUINA</h1>
+        <p id="instrucao">Sua partida já está liberada no telão.</p>
+        <p id="detalhe">Quando ela terminar, sua amostra é liberada automaticamente. Pode deixar esta tela aberta.</p>
+
+        <p id="status" class="status">Aguardando a máquina…</p>
     </div>
 
     <script>
@@ -27,8 +30,21 @@
         const POLL_MAX_MS = 90000;
 
 
+        // Falha aqui é problema na liberação, não "já retirou" — por isso vai
+        // para failed.html, e não para o error.html do bloqueio.
         function goToError() {
-            window.location.href = '/templates/sample/html/error.html';
+            window.location.href = '/templates/sample/html/failed.html';
+        }
+
+        function setStatus(texto) {
+            const el = document.getElementById('status');
+            if (el) el.textContent = texto;
+        }
+
+        function aplicarTextos(titulo, instrucao, detalhe) {
+            document.getElementById('titulo').textContent = titulo;
+            document.getElementById('instrucao').textContent = instrucao;
+            document.getElementById('detalhe').textContent = detalhe;
         }
 
         async function fetchSession(sessionId) {
@@ -44,6 +60,9 @@
             while (Date.now() - started < POLL_MAX_MS) {
                 await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
                 const session = await fetchSession(sessionId);
+                if (session.status === 'processing') {
+                    setStatus('Liberando sua amostra na máquina…');
+                }
                 if (session.status === 'completed') {
                     window.location.href = '/api/sample/thanks';
                     return;
@@ -100,6 +119,12 @@
             try {
                 const session = await fetchSession(sessionId);
                 if (session.mode === 'qrcode_static') {
+                    // Sem jogo nesse modo: a máquina libera assim que detecta a mão.
+                    aplicarTextos(
+                        'ESTENDA A MÃO NA MÁQUINA',
+                        'Posicione a mão no sensor para receber sua amostra.',
+                        'Pode deixar esta tela aberta até a amostra cair.'
+                    );
                     await startPickupAndPoll(sessionId, slug, session.status);
                 } else {
                     await waitForTotemAndPoll(sessionId);

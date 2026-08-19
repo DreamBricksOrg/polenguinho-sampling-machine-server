@@ -174,6 +174,8 @@ class MachineService:
                 start = time.time()
                 machine_on = False
                 picked_up = False
+                await asyncio.sleep(0.1)
+                serial_comm.send("1")
                 while time.time() - start < on_timeout_seconds:
                     response = serial_comm.receive()
                     if response == "on":
