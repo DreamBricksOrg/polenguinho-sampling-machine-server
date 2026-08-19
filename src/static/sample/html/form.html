@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sample Machine - Cadastro</title>
+    <title>POLENGUINHO - Cadastro</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     {% if encryption_enabled %}
     <script src="/templates/sample/js/crypt/util.js"></script>
@@ -12,45 +12,29 @@
     <script src="/templates/sample/js/crypt/rsa_encryption.js"></script>
     <script src="/templates/sample/js/crypt/db_encryption.js"></script>
     {% endif %}
-    <style>
-        body { font-family: system-ui, sans-serif; margin: 0; padding: 2rem; background: #f4f4f5; color: #18181b; }
-        .container { max-width: 480px; margin: 0 auto; background: #fff; border: 1px solid #e4e4e7; border-radius: 8px; padding: 1.5rem; }
-        .page-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; color: #71717a; margin-bottom: .5rem; }
-        h1 { font-size: 1.3rem; margin: 0 0 .75rem; }
-        p { margin: .25rem 0; line-height: 1.5; }
-        .form-label { display: block; margin-top: 1rem; font-size: .9rem; }
-        .form-input { width: 100%; box-sizing: border-box; padding: .5rem; font-size: 1rem; border: 1px solid #d4d4d8; border-radius: 4px; }
-        .form-input.invalid { border-color: #dc2626; }
-        .form-error { color: #dc2626; font-size: .8rem; margin-top: .25rem; }
-        .label-termos { display: inline; margin-left: .35rem; }
-        .btn { margin-top: 1.5rem; padding: .75rem 1.5rem; font-size: 1rem; border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
-    </style>
+    <link rel="stylesheet" href="/templates/sample/assets/css/form.css">
 </head>
 
 <body>
     <div class="container">
-        <div class="page-tag">form.html — cadastro só com e-mail</div>
-        <h1>ATIVAR / CADASTRO</h1>
-        <p>Envia apenas e-mail (ou encEmail + emailHash com criptografia ligada), marca a sessão como
-            <code>terms_accepted</code> e segue para <code>continue.html</code>.</p>
+        <div class="content">
 
-        <form id="formulario">
-            <label for="email" class="form-label">E-mail<span>*</span></label>
-            <input type="email" id="email" name="email" class="form-input" autocomplete="off" required>
-            <div id="email-erro" class="form-error" style="display:none;"></div>
+            <form id="formulario">
+                <label for="email" class="form-label">INSIRA O SEU E-MAIL</label>
+                <input type="email" id="email" name="email" class="form-input" autocomplete="off" required>
+                <div id="email-erro" class="form-error" style="display:none;"></div>
 
-            <div style="margin-top:1rem;">
-                <input type="checkbox" name="termos" id="termos" required>
-                <label for="termos" class="form-label label-termos"><b><a
+                <div class="campo-termos">
+                    <input type="checkbox" name="termos" id="termos" required>
+                    <label for="termos" class="form-label label-termos">LI E CONCORDO COM OS <a
                             href="/templates/sample/docs/Termo_Uso_Protecao_Dados_e_Anexo_Formulario_DrogaVET_Paulista_vf.pdf"
-                            target="_blank" rel="noopener">Aceito os termos e politica de uso dos meus dados</a></b>
-                    fornecidos acima para a DrogaVET, permitindo que sejam utilizados para envio de promoções e
-                    campanhas digitais personalizadas.</label>
-            </div>
-            <div id="termos-erro" class="form-error" style="display:none;"></div>
-        </form>
+                            target="_blank" rel="noopener">TERMOS E CONDIÇÕES.</a></label>
+                </div>
+                <div id="termos-erro" class="form-error" style="display:none;"></div>
+            </form>
 
-        <button class="btn" id="btn-enviar" onclick="submitForm()">ENVIAR</button>
+            <button class="btn" id="btn-enviar" onclick="submitForm()">AVANÇAR</button>
+        </div>
     </div>
 
     <script>
@@ -227,7 +211,6 @@
             }
         }
 
-        // Enter em um campo de texto ainda dispara o submit nativo do form (trusted event) — mantém funcionando.
         document.getElementById('formulario').addEventListener('submit', submitForm);
 
         document.addEventListener('DOMContentLoaded', saveSessionData);

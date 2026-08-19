@@ -37,8 +37,7 @@ UDP "next" ←—————————————|   [marca form_shown]     
      |                    |   POST /api/sample/session/terms |                      |
      |                    |   GET /sample/continue?sid |                      |
      |                    |  ←————————————————————————|                      |
-     |                    |   GET /sample/claim?sid   |                      |
-     |                    |  ←————————————————————————|                      |
+     |                    |   [aguarda a liberação]   |                      |
      |                    |                           |                      |
      | POST /sample/session/complete                  |                      |
      |                    |  ←————————————————————————|                      |
@@ -187,8 +186,7 @@ Estes são chamados pelo frontend HTML automaticamente — você não precisa im
 | GET    | `/api/sample/terms?sid=`       | Exibe termos                         |
 | GET    | `/api/sample/form?sid=`        | Exibe form, bloqueia por cookie/IP, marca sessao, envia UDP |
 | POST   | `/api/users/?collection=machine` | Cadastra usuário                   |
-| GET    | `/api/sample/continue?sid=`    | Exibe tela intermediária pós-cadastro |
-| GET    | `/api/sample/claim?sid=`       | Exibe tela de retirada               |
+| GET    | `/api/sample/continue?sid=`    | Tela pós-cadastro; faz o polling da sessão até `completed` |
 | POST   | `/api/sample/session/terms`    | Marca aceite/cadastro concluído |
 
 `POST /api/sample/session/complete` é chamado pelo Unity em `RESULTADO.cs`, não pelo celular. Ele completa a sessão e dispara o `drop`. O bloqueio por cookie/IP só é gravado quando o celular consulta uma sessão com status `completed`, depois da confirmação serial de que o brinde caiu.

@@ -198,11 +198,6 @@ async def get_session_info(sid: str, response: Response, request: Request):
     return info
 
 
-@session_router.get("/claim", response_class=HTMLResponse)
-async def html_claim(request: Request):
-    return _render_logged_page(request, "claim.html", "servidor_claim", "claim")
-
-
 @session_router.get("/continue", response_class=HTMLResponse)
 async def html_continue(request: Request):
     return _render_logged_page(request, "continue.html", "servidor_continue", "continue")

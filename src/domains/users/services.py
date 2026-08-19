@@ -184,7 +184,7 @@ class SessionService:
         # Mesmo ciclo do modo QR estático ("on" → "1" → "off"): espera até
         # PICKUP_TIMEOUT_SECONDS pela retirada, muito além do timeout do
         # RESULTADO.cs. Roda em background e o celular acompanha o desfecho
-        # pelo polling de /session/{sid}, como o claim.html já faz.
+        # pelo polling de /session/{sid}, como o continue.html já faz.
         asyncio.create_task(self._run_pickup(req.session_id))
         return SessionCompleteResponse(status="processing", session_id=req.session_id)
 

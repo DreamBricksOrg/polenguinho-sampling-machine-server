@@ -4,51 +4,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sample Machine - Continuar</title>
-    <style>
-        body { font-family: system-ui, sans-serif; margin: 0; padding: 2rem; background: #f4f4f5; color: #18181b; }
-        .container { max-width: 480px; margin: 0 auto; background: #fff; border: 1px solid #e4e4e7; border-radius: 8px; padding: 1.5rem; }
-        .page-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; color: #71717a; margin-bottom: .5rem; }
-        h1 { font-size: 1.3rem; margin: 0 0 .75rem; }
-        p { margin: .25rem 0; line-height: 1.5; }
-        .btn { margin-top: 1.5rem; padding: .75rem 1.5rem; font-size: 1rem; border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
-    </style>
+    <title>Sample Machine - Liberando sua amostra</title>
+    <link rel="stylesheet" href="/templates/sample/assets/css/continue.css">
 </head>
 
 <body>
     <div class="container">
-        <!-- continue.html — pós-cadastro (também é onde cai quem foi reconhecido pelo cookie) -->
-        <h1>TUDO CERTO!</h1>
-        <p>Seu acesso está liberado.</p>
-        <p>A máquina já está pronta esperando por você.</p>
+        <div class="content">
+            <!-- continue.html — pós-cadastro e tela de espera da liberação.
+                 Também é onde cai quem foi reconhecido pelo cookie (recall). -->
+            <h1 id="titulo">VÁ ATÉ A MÁQUINA</h1>
+            <p id="instrucao">Sua partida já está liberada no telão.</p>
+            <p id="detalhe">Quando ela terminar, sua amostra é liberada automaticamente. Pode deixar esta tela aberta.
+            </p>
 
-        <button class="btn" onclick="proceedToClaim()">CONTINUAR</button>
+            <p id="status" class="status">Aguardando a máquina…</p>
+        </div>
     </div>
 
     <script>
-        // Quem chega aqui vindo do recall pulou o form.html, que é quem
-        // normalmente grava esses valores — sem isto o claim.html leria a
-        // sessão ANTERIOR, já concluída, e pularia direto para o thanks.
-        function saveSessionData() {
+        const POLL_INTERVAL_MS = 2000;
+        const POLL_MAX_MS = 90000;
+
+        // Falha aqui é problema na liberação, não "já retirou" — por isso vai
+        // para failed.html, e não para o error.html do bloqueio.
+        function goToError() {
+            window.location.href = '/templates/sample/html/failed.html';
+        }
+
+        function setStatus(texto) {
+            const el = document.getElementById('status');
+            if (el) el.textContent = texto;
+        }
+
+        function aplicarTextos(titulo, instrucao, detalhe) {
+            document.getElementById('titulo').textContent = titulo;
+            document.getElementById('instrucao').textContent = instrucao;
+            document.getElementById('detalhe').textContent = detalhe;
+        }
+
+        // A query string é a fonte mais confiável: quem chega pelo recall pulou
+        // o form.html, e o localStorage ainda guarda a sessão ANTERIOR.
+        function resolveSession() {
             const params = new URLSearchParams(window.location.search);
-            const sessionId = params.get('sid');
-            const slug = params.get('slug');
-            if (sessionId) {
-                localStorage.setItem('session_id', sessionId);
+            const sessionId = params.get('sid') || localStorage.getItem('session_id');
+            const slug = params.get('slug') || localStorage.getItem('slug');
+
+            if (sessionId) localStorage.setItem('session_id', sessionId);
+            if (slug) localStorage.setItem('slug', slug);
+
+            return { sessionId, slug };
+        }
+
+        async function fetchSession(sessionId) {
+            const res = await fetch(`/api/sample/session/${sessionId}`);
+            if (!res.ok) throw new Error(`session fetch ${res.status}`);
+            return res.json();
+        }
+
+        // Fluxo com Unity: o totem fecha a sessão no RESULTADO.cs.
+        // O celular apenas acompanha o status para não disparar retirada cedo.
+        async function waitForTotemAndPoll(sessionId) {
+            const started = Date.now();
+            while (Date.now() - started < POLL_MAX_MS) {
+                await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+                const session = await fetchSession(sessionId);
+                if (session.status === 'processing') {
+                    setStatus('Liberando sua amostra na máquina…');
+                }
+                if (session.status === 'completed') {
+                    window.location.href = '/api/sample/thanks';
+                    return;
+                }
+                if (session.status === 'failed' || session.status === 'aborted') {
+                    goToError();
+                    return;
+                }
             }
-            if (slug) {
-                localStorage.setItem('slug', slug);
+            goToError();
+        }
+
+        // Fluxo QR estático: agenda o ciclo no servidor e acompanha por polling.
+        // Em refresh da página, retoma do status atual sem repetir o POST.
+        async function startPickupAndPoll(sessionId, slug, currentStatus) {
+            if (currentStatus === 'completed') {
+                window.location.href = '/api/sample/thanks';
+                return;
+            }
+            if (currentStatus === 'failed' || currentStatus === 'aborted') {
+                goToError();
+                return;
+            }
+            if (currentStatus !== 'processing') {
+                const res = await fetch('/api/sample/session/pickup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId, slug }),
+                });
+                if (!res.ok) throw new Error(`pickup ${res.status}`);
+            }
+
+            const started = Date.now();
+            while (Date.now() - started < POLL_MAX_MS) {
+                await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+                const session = await fetchSession(sessionId);
+                if (session.status === 'completed') {
+                    window.location.href = '/api/sample/thanks';
+                    return;
+                }
+                if (session.status === 'failed' || session.status === 'aborted') {
+                    goToError();
+                    return;
+                }
+            }
+            goToError();
+        }
+
+        async function init() {
+            const { sessionId, slug } = resolveSession();
+            if (!sessionId || !slug) return;
+
+            try {
+                const session = await fetchSession(sessionId);
+                if (session.mode === 'qrcode_static') {
+                    // Sem jogo nesse modo: a máquina libera assim que detecta a mão.
+                    aplicarTextos(
+                        'ESTENDA A MÃO NA MÁQUINA',
+                        'Posicione a mão no sensor para receber sua amostra.',
+                        'Pode deixar esta tela aberta até a amostra cair.'
+                    );
+                    await startPickupAndPoll(sessionId, slug, session.status);
+                } else {
+                    await waitForTotemAndPoll(sessionId);
+                }
+            } catch (_) {
+                goToError();
             }
         }
 
-        document.addEventListener('DOMContentLoaded', saveSessionData);
-
-        function proceedToClaim() {
-            const queryString = new URLSearchParams(window.location.search).toString();
-            window.location.href = queryString
-                ? `/api/sample/claim?${queryString}`
-                : '/api/sample/claim';
-        }
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 
