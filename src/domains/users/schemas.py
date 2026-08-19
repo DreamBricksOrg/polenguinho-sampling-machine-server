@@ -3,7 +3,10 @@ from typing import Optional, Literal
 from datetime import datetime
 
 
-Status = Literal["registered", "picked"]
+# Precisa acompanhar models.py e o mapa de rótulos do admin.html: o
+# refresh_eligibility grava "eligible", e omitir esse valor aqui fazia
+# GET /api/users/ e /api/users/{id} responderem 500 por erro de validação.
+Status = Literal["registered", "eligible", "picked"]
 
 
 # ---------- Session ----------

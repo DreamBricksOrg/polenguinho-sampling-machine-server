@@ -91,15 +91,18 @@ class UserRepository:
         result = await self.collection.delete_one({"_id": user_id})
         return result.deleted_count
 
-    async def add_pick(self, query: dict, pick_at, fields: dict) -> dict | None:
+    async def update_fields(self, query: dict, fields: dict) -> dict | None:
         return await self.collection.find_one_and_update(
             query,
-            {"$push": {"pickHistory": pick_at}, "$set": fields},
+            {"$set": fields},
             return_document=ReturnDocument.AFTER,
         )
 
-    async def mark_session_pickup(self, user_id: str, session_id: str, now) -> dict | None:
+    async def mark_session_pickup(self, user_id: str, session_id: str, now, can_pick_from) -> dict | None:
         """Marca a retirada confirmada pela máquina no documento do cadastro.
+
+        É aqui — e só aqui — que lastPick e canPickFrom são gravados: o cooldown
+        conta a partir do brinde entregue, não do cadastro enviado.
 
         O filtro por pickedSessionId torna a operação idempotente: reprocessar
         a mesma sessão não incrementa productsPicked de novo."""
@@ -107,10 +110,13 @@ class UserRepository:
             {"_id": user_id, "pickedSessionId": {"$ne": session_id}},
             {
                 "$inc": {"productsPicked": 1},
+                "$push": {"pickHistory": now},
                 "$set": {
                     "status": "picked",
                     "pickedDay": now,
                     "pickedSessionId": session_id,
+                    "lastPick": now,
+                    "canPickFrom": can_pick_from,
                     "updatedAt": now,
                 },
             },

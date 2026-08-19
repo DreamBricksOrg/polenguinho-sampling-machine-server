@@ -323,8 +323,14 @@ class SessionService:
             log.warning("pickup-user-link-missing", session_id=session_id, user_id=user_id, collection=collection)
             return
 
+        now = now_utc()
         try:
-            updated = await UserRepository(collection).mark_session_pickup(user_id, session_id, now_utc())
+            updated = await UserRepository(collection).mark_session_pickup(
+                user_id,
+                session_id,
+                now,
+                now + timedelta(hours=settings.PICKUP_COOLDOWN_HOURS),
+            )
         except Exception as exc:
             log.error("pickup-user-mark-error", error=str(exc), session_id=session_id, user_id=user_id)
             return
@@ -458,10 +464,11 @@ class UserService:
 
             # name/phone são opcionais: só sobrescreve o que veio preenchido,
             # para não apagar dados de um cadastro anterior mais completo.
+            # lastPick/canPickFrom NÃO entram aqui: quem os grava é a
+            # confirmação da máquina, senão um cadastro abandonado já bloquearia
+            # a pessoa sem ela ter recebido nada.
             pick_fields = {
                 "emailHash": ehash,
-                "lastPick": now,
-                "canPickFrom": now + cooldown,
                 "updatedAt": now,
             }
             if name_value:
@@ -469,7 +476,7 @@ class UserService:
             if phone_value:
                 pick_fields["phone"] = phone_value
 
-            updated = await repo.add_pick({"_id": existing["_id"]}, now, pick_fields)
+            updated = await repo.update_fields({"_id": existing["_id"]}, pick_fields)
             log.info("user-repick", id=existing["_id"], collection=repo.collection_name)
             LogSender().log(
                 "formulario_enviado",
@@ -503,14 +510,16 @@ class UserService:
             "emailHash": ehash,
             "phone": phone_value,
             "registerDay": register_day,
-            "canPickFrom": now + cooldown,
+            # Recém-cadastrado pode retirar agora: o cooldown só começa a contar
+            # quando a máquina confirmar que o brinde saiu.
+            "canPickFrom": now,
             "status": "registered",
             "createdAt": now,
             "updatedAt": now,
             "pickedDay": None,
             "productsPicked": 0,
-            "pickHistory": [now],
-            "lastPick": now,
+            "pickHistory": [],
+            "lastPick": None,
         }
 
         try:

@@ -37,17 +37,19 @@
     width: 100%;
 }
 
-#formulario{
+.images{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
     width: 80%;
 }
 
-.btn {
-    margin-top: 1.5rem;
-    padding: .75rem 1.5rem;
-    font-size: 1rem;
-    border: 0;
-    border-radius: 6px;
-    background: #00B7EA;
-    color: #fff;
-    cursor: pointer;
+.arrow{
+    width: 50%;
+}
+
+.message{
+    width: 100%;
 }

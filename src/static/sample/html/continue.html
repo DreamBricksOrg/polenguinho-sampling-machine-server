@@ -11,14 +11,13 @@
 <body>
     <div class="container">
         <div class="content">
-            <!-- continue.html — pós-cadastro e tela de espera da liberação.
-                 Também é onde cai quem foi reconhecido pelo cookie (recall). -->
-            <h1 id="titulo">VÁ ATÉ A MÁQUINA</h1>
-            <p id="instrucao">Sua partida já está liberada no telão.</p>
-            <p id="detalhe">Quando ela terminar, sua amostra é liberada automaticamente. Pode deixar esta tela aberta.
-            </p>
-
-            <p id="status" class="status">Aguardando a máquina…</p>
+            <!-- Caminho absoluto: a página é servida em /api/sample/continue, então
+                 um caminho relativo resolveria para /api/assets/... e daria 404. -->
+            <div class="images">
+                <img class="arrow" src="/templates/sample/assets/images/seta.png" alt="">
+                <img class="message" src="/templates/sample/assets/images/Continue%20no%20%20totem.png"
+                    alt="Continue no totem">
+            </div>
         </div>
     </div>
 
@@ -37,10 +36,15 @@
             if (el) el.textContent = texto;
         }
 
+        // Tolerante a elemento ausente: hoje a tela é só imagem e não tem esses
+        // ids. Sem a guarda, o modo QR estático quebrava aqui e o catch do
+        // init() mandava a pessoa para o failed.html sem nenhum erro real.
         function aplicarTextos(titulo, instrucao, detalhe) {
-            document.getElementById('titulo').textContent = titulo;
-            document.getElementById('instrucao').textContent = instrucao;
-            document.getElementById('detalhe').textContent = detalhe;
+            const textos = { titulo, instrucao, detalhe };
+            for (const [id, valor] of Object.entries(textos)) {
+                const el = document.getElementById(id);
+                if (el) el.textContent = valor;
+            }
         }
 
         // A query string é a fonte mais confiável: quem chega pelo recall pulou
