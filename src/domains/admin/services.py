@@ -47,8 +47,8 @@ def build_filters(name: str | None, email: str | None, date_from: date | None, d
 def admin_user_row(doc: dict) -> dict[str, Any]:
     return {
         "id": str(doc["_id"]),
-        "name": doc.get("name", ""),
-        "email": doc.get("email", ""),
+        "name": doc.get("name") or "",
+        "email": doc.get("email") or "",
         "status": doc.get("status", ""),
         "birthDate": dt2date_str(doc.get("birthDate")),
         "registerDay": dt2date_str(doc.get("registerDay")),
@@ -103,8 +103,8 @@ class AdminUserService:
             async for doc in cursor:
                 writer.writerow([
                     str(doc["_id"]),
-                    doc.get("name", ""),
-                    doc.get("email", ""),
+                    doc.get("name") or "",
+                    doc.get("email") or "",
                     doc.get("status", ""),
                     dt2date_str(doc.get("birthDate")) or "",
                     dt2date_str(doc.get("registerDay")) or "",
@@ -128,9 +128,9 @@ class AdminUserService:
         async for doc in cursor:
             results.append({
                 "id": str(doc["_id"]),
-                "name": doc.get("name", ""),
-                "email": doc.get("email", ""),
-                "phone": doc.get("phone", ""),
+                "name": doc.get("name") or "",
+                "email": doc.get("email") or "",
+                "phone": doc.get("phone") or "",
                 "created_at": (doc.get("createdAt") or datetime.now(timezone.utc)).isoformat(),
                 "productsPicked": safe_int(doc.get("productsPicked", 0)),
             })

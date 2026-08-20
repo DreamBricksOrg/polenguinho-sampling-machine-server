@@ -69,7 +69,9 @@ class SessionGetResponse(BaseModel):
 
 # ---------- Requests ----------
 class UserInitRequest(BaseModel):
-    # Só e-mail (ou encEmail+emailHash) é obrigatório; name/phone são opcionais.
+    # Nenhum dado pessoal é obrigatório: o formulário do totem manda só o
+    # `code` da sessão (o aceite dos termos é anônimo). name/email/phone
+    # continuam aceitos porque o cadastro manual do admin ainda os envia.
     name: Optional[str] = Field(None, min_length=1)
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, description="Celular no formato (99) 99999-9999")
@@ -91,8 +93,6 @@ class UserInitRequest(BaseModel):
         if self.encrypted:
             if not (self.encEmail and self.emailHash):
                 raise ValueError("Cadastro criptografado requer encEmail e emailHash")
-        elif not self.email:
-            raise ValueError("email é obrigatório")
         return self
 
 
@@ -109,11 +109,12 @@ class UserPickupRequest(BaseModel):
 
 # ---------- Responses ----------
 # email é `str` (não EmailStr) porque, com ENCRYPTION_ENABLED=true, o valor
-# armazenado/retornado é o texto cifrado (RSA+AES), que não tem formato de e-mail.
+# armazenado/retornado é o texto cifrado (RSA+AES), que não tem formato de
+# e-mail. É opcional porque o aceite feito no totem não coleta e-mail nenhum.
 class UserInitResponse(BaseModel):
     id: str
     name: Optional[str] = None
-    email: str
+    email: Optional[str] = None
     status: Status
     registerDay: datetime
     canPickFrom: datetime
@@ -122,7 +123,7 @@ class UserInitResponse(BaseModel):
 class UserGetResponse(BaseModel):
     id: str
     name: Optional[str] = None
-    email: str
+    email: Optional[str] = None
     phone: Optional[str] = None
     status: Status
     registerDay: datetime
@@ -132,7 +133,7 @@ class UserGetResponse(BaseModel):
 
 class UserPickupResponse(BaseModel):
     id: str
-    email: str
+    email: Optional[str] = None
     pickedDay: datetime
     productsPicked: int
     status: Status  # deve vir "picked"
