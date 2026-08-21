@@ -1,17 +1,12 @@
 from datetime import datetime
 
 from pymongo import ReadPreference, ReturnDocument
-from pymongo.errors import OperationFailure
 
 from infrastructure.database.mongo import db
 
 DEFAULT_COLLECTION = "machine"
 SESSIONS_COLLECTION = "sample_sessions"
 ADDRESSES_COLLECTION = "addresses"
-
-# Índice único antigo, sem filtro, criado quando o e-mail era obrigatório.
-LEGACY_EMAIL_INDEX = "uniq_email"
-EMAIL_INDEX = "uniq_email_present"
 
 
 class SessionRepository:
@@ -67,26 +62,8 @@ class UserRepository:
         repo.collection = self.collection.with_options(read_preference=ReadPreference.PRIMARY)
         return repo
 
-    async def ensure_email_index(self) -> None:
-        """Unicidade só entre os cadastros que têm e-mail.
-
-        O formulário não coleta mais e-mail e grava `email: null`. O índice
-        antigo (uniq_email, sem filtro) tratava todos esses nulos como o mesmo
-        valor e derrubava o segundo cadastro com DuplicateKeyError; o índice
-        parcial mantém a proteção para quem ainda cadastra com e-mail (admin) e
-        ignora os documentos sem."""
-        try:
-            await self.collection.drop_index(LEGACY_EMAIL_INDEX)
-        except OperationFailure:
-            # Índice inexistente (ou já removido): nada a fazer.
-            pass
-
-        await self.collection.create_index(
-            "email",
-            unique=True,
-            name=EMAIL_INDEX,
-            partialFilterExpression={"email": {"$type": "string"}},
-        )
+    async def ensure_unique_email_index(self) -> None:
+        await self.collection.create_index("email", unique=True, name="uniq_email")
 
     async def create(self, doc: dict) -> None:
         await self.collection.insert_one(doc)

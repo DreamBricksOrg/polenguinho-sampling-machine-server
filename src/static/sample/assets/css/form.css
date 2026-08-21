@@ -37,40 +37,111 @@
     width: 100%;
 }
 
-/* Painel dos termos: 70% da altura da tela, com o texto rolando por dentro.
-   A altura é fixa (não max-height) para o botão ficar sempre na mesma posição,
-   com texto curto ou longo. */
-.termos {
+#formulario {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
     width: 80%;
-    height: 70vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    padding: 1.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 12px;
-    background: rgba(0, 0, 0, 0.35);
-    text-align: left;
+    padding: 5rem 0rem;
 }
 
-.termos-titulo {
+label[for="email"] {
     font-size: 1.5rem;
-    margin-bottom: 1rem;
 }
 
-.termos p {
-    font-size: 1rem;
-    line-height: 1.5;
-    margin-bottom: 1rem;
+#email {
+    width: 100%;
+    padding: .8rem 1rem;
+    font-size: 1.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 10px;
+    color: #0072DC;
+    background: rgba(255, 255, 255, 0.9);
 }
 
-.termos p:last-child {
-    margin-bottom: 0;
+#email::placeholder {
+    color: #6b7280;
+}
+
+#email.invalid {
+    border-color: #ff3b30;
+    box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
+}
+
+/* Linha do aceite. Alinhado pelo topo, com o checkbox deslocado até o centro
+   da PRIMEIRA linha do texto: com uma linha só o conjunto fica centralizado;
+   quebrando em duas, o checkbox acompanha a linha de cima em vez de descer
+   para o meio do bloco. As duas medidas ficam aqui porque a conta do
+   margin-top depende delas. */
+.campo-termos {
+    --linha: 1.3rem;
+    --caixa: 1.2rem;
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+}
+
+.label-termos {
+    flex: 1;
+    line-height: var(--linha);
+    cursor: pointer;
+}
+
+/* Checkbox desenhado à mão. Com accent-color quem escolhe a cor do tick é o
+   navegador, pelo contraste com o fundo — e #00B7EA é claro o bastante para
+   ele optar por preto. Controlando o desenho, a marca é branca sempre. */
+#termos {
+    appearance: none;
+    -webkit-appearance: none;
+    width: var(--caixa);
+    height: var(--caixa);
+    margin: calc((var(--linha) - var(--caixa)) / 2) 0 0;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    transition: background-color .15s ease;
+}
+
+/* O tick é um retângulo sem as bordas de cima e da esquerda, girado 45°. */
+#termos::after {
+    content: "";
+    width: .3rem;
+    height: .6rem;
+    border: solid #fff;
+    border-width: 0 3px 3px 0;
+    transform: translateY(-1px) rotate(45deg) scale(0);
+    transition: transform .15s ease;
+}
+
+#termos:checked {
+    background: #00B7EA;
+}
+
+#termos:checked::after {
+    transform: translateY(-1px) rotate(45deg) scale(1);
+}
+
+#termos:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+#email-erro,
+#termos-erro {
+    color: #ff3b30;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+    line-height: 1.4;
 }
 
 .btn {
-    margin-top: 2rem;
-    padding: 1.2rem 1.5rem;
+    margin-top: 3rem;
+    padding: 1rem 1.5rem;
     font-size: 2rem;
     border: 0;
     border-radius: 6px;
@@ -78,9 +149,4 @@
     color: #fff;
     cursor: pointer;
     width: 80%;
-}
-
-.btn:disabled {
-    opacity: .6;
-    cursor: default;
 }

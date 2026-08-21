@@ -390,7 +390,7 @@ def user_response(doc: dict) -> UserGetResponse:
     return UserGetResponse(
         id=doc["_id"],
         name=doc.get("name"),
-        email=doc.get("email"),
+        email=doc["email"],
         phone=doc.get("phone"),
         status=doc.get("status", "registered"),
         registerDay=doc["registerDay"],
@@ -411,9 +411,9 @@ class UserService:
     async def create_user(self, payload: UserInitRequest) -> UserInitResponse:
         repo = self.repository.primary()
         try:
-            await repo.ensure_email_index()
+            await repo.ensure_unique_email_index()
         except Exception as exc:
-            log.warning("ensure-email-index-failed", error=str(exc))
+            log.warning("ensure-unique-email-index-failed", error=str(exc))
 
         if payload.encrypted and not settings.ENCRYPTION_ENABLED:
             raise HTTPException(status_code=400, detail="Criptografia desabilitada neste servidor")
@@ -431,7 +431,7 @@ class UserService:
             phone_value = payload.encPhone
             log_name, log_email, log_phone = "***criptografado***", "***criptografado***", "***criptografado***"
             dedup_query = {"emailHash": ehash}
-        elif payload.email:
+        else:
             email_lower = str(payload.email).lower()
             ehash = email_hash(email_lower)
             name_value = payload.name
@@ -439,18 +439,8 @@ class UserService:
             phone_value = payload.phone
             log_name, log_email, log_phone = payload.name, email_lower, payload.phone
             dedup_query = {"$or": [{"emailHash": ehash}, {"email": email_lower}]}
-        else:
-            # Aceite dos termos sem identificação: não há por onde deduplicar.
-            # Quem impede a retirada repetida é o bloqueio por cookie/IP na
-            # entrada do fluxo (/start, /welcome, /form).
-            ehash = None
-            name_value = payload.name
-            email_value = None
-            phone_value = payload.phone
-            log_name, log_email, log_phone = payload.name, None, payload.phone
-            dedup_query = None
 
-        existing = await repo.find_one(dedup_query) if dedup_query else None
+        existing = await repo.find_one(dedup_query)
         if existing:
             last_pick = existing.get("lastPick")
             if last_pick:
@@ -510,7 +500,7 @@ class UserService:
             return UserInitResponse(
                 id=updated["_id"],
                 name=updated.get("name"),
-                email=updated.get("email"),
+                email=updated["email"],
                 status=updated.get("status", "registered"),
                 registerDay=updated["registerDay"],
                 canPickFrom=updated["canPickFrom"],
@@ -561,7 +551,7 @@ class UserService:
         return UserInitResponse(
             id=reg_id,
             name=doc.get("name"),
-            email=doc.get("email"),
+            email=doc["email"],
             status=doc["status"],
             registerDay=doc["registerDay"],
             canPickFrom=doc["canPickFrom"],
@@ -659,7 +649,7 @@ class UserService:
         )
         return UserPickupResponse(
             id=updated["_id"],
-            email=updated.get("email"),
+            email=updated["email"],
             pickedDay=day_dt,
             productsPicked=int(updated.get("productsPicked", 0)),
             status=updated.get("status", "picked"),
