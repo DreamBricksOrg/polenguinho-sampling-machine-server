@@ -352,9 +352,23 @@ class SessionService:
             collection=collection,
             products_picked=updated.get("productsPicked"),
         )
+        # O e-mail vai no próprio evento da retirada. Sem ele, a consulta de
+        # quem retirou precisa casar com o formulario_enviado da mesma sessão —
+        # e esse evento não existe quando o form é pulado pelo recall, que é
+        # justamente o caso das retiradas repetidas.
+        #
+        # Vai como está gravado: com ENCRYPTION_ENABLED=true é o texto cifrado
+        # (RSA+AES), não a máscara "***criptografado***" usada nos outros
+        # eventos — assim dá para descriptografar na página do admin.
         LogSender().log(
             "retirada_registrada_no_cadastro",
-            additional={"session_id": session_id, "id": user_id, "products_picked": updated.get("productsPicked")},
+            additional={
+                "session_id": session_id,
+                "id": user_id,
+                "email": updated.get("email"),
+                "products_picked": updated.get("productsPicked"),
+                "recalled": bool(session.get("recalled_from")),
+            },
             status="SUCCESS",
             tags=["retirada", "cadastro", "servidor"],
         )
