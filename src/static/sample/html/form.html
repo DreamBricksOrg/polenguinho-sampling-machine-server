@@ -19,21 +19,45 @@
     <div class="container">
         <div class="content">
 
-            <form id="formulario">
-                <label for="email" class="form-label">INSIRA O SEU E-MAIL</label>
-                <input type="email" id="email" name="email" class="form-input" autocomplete="off" required>
-                <div id="email-erro" class="form-error" style="display:none;"></div>
+            <form id="formulario" autocomplete="off">
+                <div class="termo-texto">
+                    <p>Ao participar da campanha promovida pela Polenghi Indústrias Alimentícias Ltda. (Savencia), você
+                        concorda com a coleta e utilização do seu endereço de e-mail para identificar sua participação
+                        na campanha e realizar comunicações relacionadas à campanha.</p>
+
+                    <p>Seus dados serão tratados em conformidade com a Lei Geral de Proteção de Dados Pessoais (LGPD),
+                        com adoção de medidas adequadas de segurança e confidencialidade, sendo utilizados
+                        exclusivamente para as finalidades descritas neste termo e poderão ser compartilhados com
+                        fornecedores contratados apenas quando necessário para a execução da campanha.</p>
+
+                    <p>Você poderá exercer seus direitos como titular de dados pessoais (pedir informações, correções ou
+                        exclusão) por meio do e-mail: <a href="mailto:privacidade@savencia.com">privacidade@savencia.com</a>.
+                    </p>
+                </div>
 
                 <div class="campo-termos">
-                    <input type="checkbox" name="termos" id="termos" required>
-                    <label for="termos" class="form-label label-termos">LI E CONCORDO COM OS <a
-                            href="/templates/sample/docs/Termo_Uso_Protecao_Dados_e_Anexo_Formulario_DrogaVET_Paulista_vf.pdf"
-                            target="_blank" rel="noopener">TERMOS E CONDIÇÕES.</a></label>
+                    <input type="checkbox" name="idade" id="idade" autocomplete="off" required>
+                    <label for="idade" class="form-label label-termos">Declaro que tenho 18 (dezoito) anos ou
+                        mais.</label>
+                </div>
+                <div id="idade-erro" class="form-error" style="display:none;"></div>
+
+                <div class="campo-termos">
+                    <input type="checkbox" name="termos" id="termos" autocomplete="off" required>
+                    <label for="termos" class="form-label label-termos">Li e concordo com o tratamento dos meus dados
+                        pessoais para participação na campanha “A Fominha Apareceu”, conforme descrito neste
+                        Termo.</label>
                 </div>
                 <div id="termos-erro" class="form-error" style="display:none;"></div>
+
+                <label for="email" class="form-label">E-MAIL</label>
+                <input type="email" id="email" name="email" class="form-input" autocomplete="off" required>
+                <div id="email-erro" class="form-error" style="display:none;"></div>
             </form>
 
-            <button class="btn" id="btn-enviar" onclick="submitForm()">AVANÇAR</button>
+            <p class="nota-botao">Ao clicar em PARTICIPAR, você confirma as declarações e autorizações acima.</p>
+
+            <button class="btn" id="btn-enviar" onclick="submitForm()">PARTICIPAR</button>
         </div>
     </div>
 
@@ -61,9 +85,19 @@
         }
 
         const emailInput = document.getElementById('email');
+        const idadeInput = document.getElementById('idade');
         const termosInput = document.getElementById('termos');
         const emailErro = document.getElementById('email-erro');
+        const idadeErro = document.getElementById('idade-erro');
         const termosErro = document.getElementById('termos-erro');
+
+        // Consentimento nunca pode vir pré-marcado. O navegador restaura o
+        // estado dos checkboxes ao voltar/recarregar a página, então zeramos
+        // na mão em vez de confiar no autocomplete="off".
+        function limparConfirmacoes() {
+            idadeInput.checked = false;
+            termosInput.checked = false;
+        }
 
         function validarCampo(input, erroEl, valido, mensagemVazio, mensagemInvalido, obrigatorio) {
             const vazio = input.value.trim() === '';
@@ -95,31 +129,41 @@
             return true;
         }
 
-        function validarTermos(obrigatorio) {
-            if (termosInput.checked) {
-                termosErro.textContent = '';
-                termosErro.style.display = 'none';
+        function validarConfirmacao(input, erroEl, mensagem, obrigatorio) {
+            if (input.checked) {
+                erroEl.textContent = '';
+                erroEl.style.display = 'none';
                 return true;
             }
 
             if (obrigatorio) {
-                termosErro.textContent = 'Você precisa aceitar os termos para continuar.';
-                termosErro.style.display = 'block';
+                erroEl.textContent = mensagem;
+                erroEl.style.display = 'block';
             }
             return false;
         }
 
+        // Sem curto-circuito: as três validações rodam sempre, para que todos
+        // os erros pendentes apareçam de uma vez.
         function validarCampos(obrigatorio) {
             const emailValido = validarCampo(
                 emailInput, emailErro, validarEmail(emailInput.value),
                 'E-mail é obrigatório.', 'E-mail inválido.', obrigatorio
             );
-            const termosValido = validarTermos(obrigatorio);
+            const idadeValido = validarConfirmacao(
+                idadeInput, idadeErro,
+                'Você precisa declarar que tem 18 anos ou mais para continuar.', obrigatorio
+            );
+            const termosValido = validarConfirmacao(
+                termosInput, termosErro,
+                'Você precisa concordar com o tratamento dos seus dados para continuar.', obrigatorio
+            );
 
-            return emailValido && termosValido;
+            return emailValido && idadeValido && termosValido;
         }
 
         emailInput.addEventListener('input', () => validarCampos(false));
+        idadeInput.addEventListener('change', () => validarCampos(false));
         termosInput.addEventListener('change', () => validarCampos(false));
 
         async function buildPayload(sessionId) {
@@ -213,7 +257,13 @@
 
         document.getElementById('formulario').addEventListener('submit', submitForm);
 
-        document.addEventListener('DOMContentLoaded', saveSessionData);
+        document.addEventListener('DOMContentLoaded', () => {
+            saveSessionData();
+            limparConfirmacoes();
+        });
+
+        // Volta pelo histórico (bfcache) não dispara DOMContentLoaded.
+        window.addEventListener('pageshow', limparConfirmacoes);
     </script>
 </body>
 
