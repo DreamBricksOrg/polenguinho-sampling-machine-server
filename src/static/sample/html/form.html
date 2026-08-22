@@ -64,6 +64,9 @@
     <script>
         const COLLECTION = 'registrations';
         const ENCRYPTION_ENABLED = {{ 'true' if encryption_enabled else 'false' }};
+        // FORM_DEBUG=true no .env + ?sid=1: a tela abre sem sessão, e o envio
+        // para no aviso em vez de criar cadastro.
+        const FORM_DEBUG = {{ 'true' if form_debug else 'false' }};
 
         function getUrlParameter(name) {
             return new URLSearchParams(window.location.search).get(name);
@@ -229,6 +232,16 @@
         async function submitForm(e) {
             if (e) e.preventDefault();
             if (!validarCampos(true)) return;
+
+            if (FORM_DEBUG) {
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Modo debug',
+                    text: 'Formulário válido. Nenhum cadastro foi criado.',
+                    confirmButtonText: 'OK',
+                });
+                return;
+            }
 
             const sessionId = localStorage.getItem('session_id') || '';
 

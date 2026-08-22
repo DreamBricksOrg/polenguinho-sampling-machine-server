@@ -217,6 +217,17 @@ async def html_form(request: Request):
     sid = request.query_params.get("sid")
     if not sid:
         raise HTTPException(400, "sid ausente")
+
+    # Atalho de inspeção do layout: renderiza o formulário sem sessão, sem
+    # cookie/IP e sem registrar nada. Só existe com FORM_DEBUG=true no .env.
+    if settings.FORM_DEBUG and sid == settings.FORM_DEBUG_SID:
+        log.warning("form-debug-render", session_id=sid)
+        return templates.TemplateResponse(
+            request,
+            "form.html",
+            {"encryption_enabled": settings.ENCRYPTION_ENABLED, "form_debug": True},
+        )
+
     try:
         if await _is_pickup_blocked_for_request(request, "servidor_form"):
             return templates.TemplateResponse(request, "error.html")

@@ -48,19 +48,39 @@
     width: 80%;
 }
 
-/* Corpo do termo. Fica em bloco próprio para o texto respirar sem empurrar os
-   campos para fora da tela. */
+/* Corpo do termo: cartão branco de altura limitada, rolando por dentro. A
+   barra de rolagem some (o texto cortado já sinaliza que há mais) e o
+   overscroll fica preso aqui, para o gesto não arrastar a página junto. */
 .termo-texto {
     display: flex;
     flex-direction: column;
     gap: .8rem;
+    max-height: 40vh;
+    padding: 1rem 1.1rem;
+    border-radius: 12px;
+    background: #fff;
     font-size: .9rem;
     line-height: 1.45;
     text-align: justify;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.termo-texto::-webkit-scrollbar {
+    display: none;
+}
+
+/* O `color: white` do reset universal atinge cada elemento, então a cor sobre
+   o branco precisa ser repetida nos filhos — herdar não basta. */
+.termo-texto p {
+    color: #333;
 }
 
 .termo-texto a {
-    color: #fff;
+    color: #0072DC;
     word-break: break-word;
 }
 
@@ -72,18 +92,18 @@
 }
 
 label[for="email"] {
-    margin-top: .5rem;
-    font-size: 1.5rem;
+    font-size: 1.2rem;
+    margin-bottom: -15px;
 }
 
 #email {
     width: 100%;
-    padding: .8rem 1rem;
-    font-size: 1.2rem;
-    border: 1px solid rgba(255, 255, 255, 0.7);
-    border-radius: 10px;
-    color: #0072DC;
-    background: rgba(255, 255, 255, 0.9);
+    padding: .6rem 1rem;
+    font-size: 1.1rem;
+    border: 1px solid rgba(255, 255, 255, 1);
+    border-radius: 8px;
+    color: #000000;
+    background: rgb(255, 255, 255);
 }
 
 #email::placeholder {
@@ -158,6 +178,11 @@ label[for="email"] {
     outline-offset: 2px;
 }
 
+.form-label {
+    font-size: 1rem;
+    line-height: 1.1;
+}
+
 .form-error {
     color: #ff3b30;
     font-size: 0.85rem;
@@ -166,7 +191,7 @@ label[for="email"] {
 
 .nota-botao {
     width: 80%;
-    margin-top: 2rem;
+    margin-top: 1rem;
     font-size: .85rem;
     line-height: 1.4;
     text-align: center;

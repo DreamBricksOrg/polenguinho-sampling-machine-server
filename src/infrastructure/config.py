@@ -83,6 +83,12 @@ class Settings(BaseSettings):
     # Criptografia dos dados do formulário (RSA+AES no navegador) — opcional, desligada por padrão
     ENCRYPTION_ENABLED: bool = Field(False, env="ENCRYPTION_ENABLED")
 
+    # Abre /api/sample/form?sid=1 sem sessão, cookie ou horário, só para
+    # inspecionar o layout. Desligado por padrão: ligado, qualquer um pula a
+    # tela de bloqueio por cookie/IP. Nunca em produção.
+    FORM_DEBUG: bool = Field(False, env="FORM_DEBUG")
+    FORM_DEBUG_SID: str = Field("1", env="FORM_DEBUG_SID")
+
     @model_validator(mode="after")
     def check_form_deps(self) -> "Settings":
         if self.USE_FORM:
